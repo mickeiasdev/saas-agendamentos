@@ -99,8 +99,11 @@ service cloud.firestore {
       }
 
       match /reviews/{docId} {
+        // Avaliações criadas por clientes do site público passam pela API route
+        // (Admin SDK), que valida o atendimento e a identidade antes de gravar.
+        // Aqui, somente membros do tenant escrevem diretamente.
         allow read: if isMember();
-        allow create: if request.auth != null;
+        allow create: if isMember();
         allow update: if isMember();
         allow delete: if isMember();
       }

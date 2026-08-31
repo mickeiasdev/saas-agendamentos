@@ -341,12 +341,6 @@ export async function createPublicAppointment(
       couponApplied = true;
     }
 
-  const cancelWindow = tenant.settings?.bookingCancelWindowMinutes ?? 0;
-  const cancelWindowDeadline = cancelWindow > 0
-    ? new Date(startAt.getTime() - cancelWindow * 60000)
-    : null;
-  const needsConfirmation = tenant.settings?.confirmationRequired ?? false;
-
   tx.set(ref, {
     professionalId: professional.id,
     serviceId: service.id,

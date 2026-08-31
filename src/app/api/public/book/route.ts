@@ -1,17 +1,12 @@
 import { NextRequest } from "next/server";
 import { getAdminFirestore } from "@/lib/server/firebaseAdmin";
+import { createMockAppointment } from "@/lib/server/mockTenant";
 import { createPublicAppointment, BookingError, type PublicBookingInput } from "@/lib/booking/server";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   const db = getAdminFirestore();
-  if (!db) {
-    return Response.json(
-      { error: "Backend ainda não configurado. Configure a service account do Firebase no ambiente." },
-      { status: 503 }
-    );
-  }
 
   let body: PublicBookingInput;
   try {
@@ -43,6 +38,11 @@ export async function POST(req: NextRequest) {
     notes: body.notes?.trim() || undefined,
     couponCode: body.couponCode?.trim().toUpperCase() || undefined,
   };
+
+  if (!db) {
+    const result = createMockAppointment(cleaned);
+    return Response.json({ ok: true, ...result });
+  }
 
   try {
     const result = await createPublicAppointment(db, cleaned);

@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { formatBRL } from "@/lib/utils/format";
 import type { Professional, Service, Tenant } from "@/types";
 
@@ -22,9 +22,9 @@ interface PublicSiteData {
 export default function BookingPage({
   params,
 }: {
-  params: Promise<{ tenant: string }>;
+  params: { tenant: string };
 }) {
-  const { tenant: slug } = use(params);
+  const slug = params.tenant;
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [professionals, setProfessionals] = useState<Professional[]>([]);

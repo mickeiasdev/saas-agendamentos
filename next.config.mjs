@@ -13,9 +13,6 @@ const nextConfig = {
       },
     ],
   },
-  server: {
-    allowedHosts: [".monkeycode-ai.live"],
-  },
 };
 
 export default nextConfig;
