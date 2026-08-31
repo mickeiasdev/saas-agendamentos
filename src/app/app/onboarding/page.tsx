@@ -28,6 +28,15 @@ export default function OnboardingPage() {
   const [phone, setPhone] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [email, setEmail] = useState("");
+  const [instagram, setInstagram] = useState("");
+  const [description, setDescription] = useState("");
+  const [street, setStreet] = useState("");
+  const [number, setNumber] = useState("");
+  const [complement, setComplement] = useState("");
+  const [neighborhood, setNeighborhood] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [zip, setZip] = useState("");
   const [segmentId, setSegmentId] = useState("barber");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -44,6 +53,17 @@ export default function OnboardingPage() {
         phone: phone || undefined,
         whatsapp: whatsapp || undefined,
         email: email || undefined,
+        instagram: instagram || undefined,
+        description: description || undefined,
+        address: {
+          street: street || undefined,
+          number: number || undefined,
+          complement: complement || undefined,
+          neighborhood: neighborhood || undefined,
+          city: city || undefined,
+          state: state || undefined,
+          zip: zip || undefined,
+        },
         segmentId,
         slug: name,
       });
@@ -103,6 +123,58 @@ export default function OnboardingPage() {
             </select>
           </div>
         </div>
+        <div>
+          <label className="label" htmlFor="instagram">Instagram</label>
+          <input id="instagram" className="input" placeholder="@suaempresa" value={instagram} onChange={(e) => setInstagram(e.target.value)} />
+        </div>
+        <div>
+          <label className="label" htmlFor="description">Descrição</label>
+          <textarea
+            id="description"
+            className="input"
+            rows={2}
+            placeholder="Resumo do seu negócio (aparece no site público)"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
+        <fieldset className="rounded-lg border border-slate-200 p-4">
+          <legend className="px-1 text-sm font-medium text-slate-700">Endereço</legend>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="label" htmlFor="street">Rua</label>
+              <input id="street" className="input" value={street} onChange={(e) => setStreet(e.target.value)} />
+            </div>
+            <div>
+              <label className="label" htmlFor="number">Número</label>
+              <input id="number" className="input" value={number} onChange={(e) => setNumber(e.target.value)} />
+            </div>
+          </div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="label" htmlFor="complement">Complemento</label>
+              <input id="complement" className="input" value={complement} onChange={(e) => setComplement(e.target.value)} />
+            </div>
+            <div>
+              <label className="label" htmlFor="neighborhood">Bairro</label>
+              <input id="neighborhood" className="input" value={neighborhood} onChange={(e) => setNeighborhood(e.target.value)} />
+            </div>
+          </div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+            <div>
+              <label className="label" htmlFor="city">Cidade</label>
+              <input id="city" className="input" value={city} onChange={(e) => setCity(e.target.value)} />
+            </div>
+            <div>
+              <label className="label" htmlFor="state">Estado</label>
+              <input id="state" className="input" maxLength={2} placeholder="SP" value={state} onChange={(e) => setState(e.target.value.toUpperCase())} />
+            </div>
+            <div>
+              <label className="label" htmlFor="zip">CEP</label>
+              <input id="zip" className="input" value={zip} onChange={(e) => setZip(e.target.value)} />
+            </div>
+          </div>
+        </fieldset>
         {error && <p className="text-sm text-red-600">{error}</p>}
         <button type="submit" className="btn-primary w-full" disabled={loading}>
           {loading ? "Criando..." : "Criar empresa e começar"}

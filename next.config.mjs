@@ -13,7 +13,7 @@ const nextConfig = {
       },
     ],
   },
-  experimental: {
+  server: {
     allowedHosts: [".monkeycode-ai.live"],
   },
 };

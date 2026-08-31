@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import {
   type User,
   onAuthStateChanged,
+  sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -24,6 +25,7 @@ export interface AuthState {
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   changePassword: (newPassword: string) => Promise<void>;
+  verifyEmail: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -110,6 +112,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await updatePassword(auth.currentUser, newPassword);
   }, []);
 
+  const verifyEmail = useCallback(async () => {
+    const auth = getFirebaseAuth();
+    if (!auth.currentUser) throw new Error("Usuário não autenticado");
+    await sendEmailVerification(auth.currentUser);
+  }, []);
+
   const refreshProfile = useCallback(async () => {
     if (user) await loadProfile(user.uid);
   }, [user, loadProfile]);
@@ -125,9 +133,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logout,
       resetPassword,
       changePassword,
+      verifyEmail,
       refreshProfile,
     }),
-    [user, profile, loading, configured, login, register, logout, resetPassword, changePassword, refreshProfile]
+    [user, profile, loading, configured, login, register, logout, resetPassword, changePassword, verifyEmail, refreshProfile]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

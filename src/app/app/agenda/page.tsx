@@ -42,6 +42,9 @@ export default function AgendaPage() {
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filterProfessional, setFilterProfessional] = useState("all");
+  const [filterService, setFilterService] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
 
   const range = useMemo(() => {
     if (view === "day") return { from: new Date(anchor.setHours(0, 0, 0, 0)), to: addDays(new Date(anchor.setHours(0, 0, 0, 0)), 1) };
@@ -82,6 +85,15 @@ export default function AgendaPage() {
     return services.find((s) => s.id === id)?.name ?? id;
   };
 
+  const filtered = useMemo(() => {
+    return appointments.filter((a) => {
+      if (filterProfessional !== "all" && a.professionalId !== filterProfessional) return false;
+      if (filterService !== "all" && a.serviceId !== filterService) return false;
+      if (filterStatus !== "all" && a.status !== filterStatus) return false;
+      return true;
+    });
+  }, [appointments, filterProfessional, filterService, filterStatus]);
+
   if (loading) return <p className="text-slate-500">Carregando...</p>;
 
   return (
@@ -113,16 +125,55 @@ export default function AgendaPage() {
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-3">
+        <select
+          className="input w-44 py-1.5"
+          value={filterProfessional}
+          onChange={(e) => setFilterProfessional(e.target.value)}
+        >
+          <option value="all">Todos os profissionais</option>
+          {professionals.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+        <select
+          className="input w-44 py-1.5"
+          value={filterService}
+          onChange={(e) => setFilterService(e.target.value)}
+        >
+          <option value="all">Todos os serviços</option>
+          {services.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+        <select
+          className="input w-44 py-1.5"
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+        >
+          <option value="all">Todos os status</option>
+          {Object.entries(STATUS_BADGE).map(([key]) => (
+            <option key={key} value={key}>
+              {key}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div className="card p-4 text-sm text-slate-600">
         {view === "month" ? (
           <MonthView
             anchor={anchor}
-            appointments={appointments}
+            appointments={filtered}
             nameOf={nameOf}
           />
         ) : (
           <ListView
-            appointments={appointments}
+            appointments={filtered}
             nameOf={nameOf}
             view={view}
             anchor={anchor}

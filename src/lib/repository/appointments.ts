@@ -143,6 +143,21 @@ export async function updateAppointmentStatus(
   await updateDoc(doc(collectionFor(tenantId), id), patch);
 }
 
+export async function listAppointmentsByCustomer(
+  tenantId: string,
+  customerId: string,
+  opts: { limit?: number } = {}
+): Promise<Appointment[]> {
+  const q = query(
+    collectionFor(tenantId),
+    where("customerId", "==", customerId),
+    orderBy("startAt", "desc"),
+    limit(opts.limit ?? 20)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Appointment);
+}
+
 export async function getAppointment(tenantId: string, id: string): Promise<Appointment | null> {
   const snap = await getDoc(doc(collectionFor(tenantId), id));
   return snap.exists() ? ({ id: snap.id, ...snap.data() } as Appointment) : null;

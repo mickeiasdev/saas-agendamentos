@@ -25,6 +25,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/app/categories", label: "Categorias", permission: "category.manage" },
   { href: "/app/professionals", label: "Profissionais", permission: "professional.manage" },
   { href: "/app/availability", label: "Disponibilidade", permission: "availability.manage" },
+  { href: "/app/holidays", label: "Feriados", permission: "availability.manage" },
   { href: "/app/coupons", label: "Cupons", permission: "coupon.manage" },
   { href: "/app/reviews", label: "Avaliações", permission: "review.manage" },
   { href: "/app/reports", label: "Relatórios", permission: "reports.view" },

@@ -4,11 +4,13 @@ import { useState } from "react";
 import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { getFirebaseFirestore } from "@/lib/firebase/client";
 import { useTenant } from "@/lib/tenant/TenantContext";
+import { useAuth } from "@/lib/auth/AuthContext";
 import { can } from "@/lib/rbac/roles";
 import { getRoleForTenant } from "@/lib/rbac/membership";
 
 export default function SettingsPage() {
   const { activeTenant, activeTenantId, memberships, refreshActiveTenant } = useTenant();
+  const { user, changePassword, verifyEmail } = useAuth();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [form, setForm] = useState({
@@ -17,6 +19,12 @@ export default function SettingsPage() {
     showContact: activeTenant?.branding.showContact ?? true,
     showLocation: activeTenant?.branding.showLocation ?? true,
   });
+  const [passForm, setPassForm] = useState({ newPassword: "", confirm: "" });
+  const [passError, setPassError] = useState("");
+  const [passMsg, setPassMsg] = useState("");
+  const [passSaving, setPassSaving] = useState(false);
+  const [emailMsg, setEmailMsg] = useState("");
+  const [emailSaving, setEmailSaving] = useState(false);
 
   if (!activeTenant || !activeTenantId) return null;
 
@@ -140,8 +148,7 @@ export default function SettingsPage() {
       </form>
 
       <div className="card">
-        <h2 className="mb-3 font-semibold text-slate-900">Dados da empresa</h2>
-        <dl className="grid gap-3 text-sm sm:grid-cols-2">
+        <h2 className="mb-3 font-semibold text-slate-900">Dados da empresa</h2>        <dl className="grid gap-3 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-slate-500">Nome</dt>
             <dd className="font-medium text-slate-900">{activeTenant.name}</dd>
@@ -169,6 +176,93 @@ export default function SettingsPage() {
             <dd className="font-medium text-slate-900">{activeTenant.subscriptionStatus}</dd>
           </div>
         </dl>
+      </div>
+
+      <div className="card space-y-4">
+        <div>
+          <h2 className="font-semibold text-slate-900">Conta e segurança</h2>
+          <p className="text-sm text-slate-500">Alteração de senha e verificação de e-mail.</p>
+        </div>
+
+        {user && !user.emailVerified && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+            <span>Seu e-mail ainda não foi verificado.</span>
+            <button
+              className="btn-secondary py-1.5 text-xs"
+              disabled={emailSaving}
+              onClick={async () => {
+                setEmailSaving(true);
+                setEmailMsg("");
+                try {
+                  await verifyEmail();
+                  setEmailMsg("E-mail de verificação enviado. Verifique sua caixa de entrada.");
+                } catch (err) {
+                  setEmailMsg((err as Error).message ?? "Erro ao enviar verificação.");
+                } finally {
+                  setEmailSaving(false);
+                }
+              }}
+            >
+              {emailSaving ? "Enviando..." : "Reenviar verificação"}
+            </button>
+          </div>
+        )}
+        {emailMsg && <p className="text-sm text-green-600">{emailMsg}</p>}
+
+        <form
+          className="space-y-4"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setPassError("");
+            setPassMsg("");
+            if (passForm.newPassword.length < 6) {
+              setPassError("A senha deve ter pelo menos 6 caracteres.");
+              return;
+            }
+            if (passForm.newPassword !== passForm.confirm) {
+              setPassError("As senhas não coincidem.");
+              return;
+            }
+            setPassSaving(true);
+            try {
+              await changePassword(passForm.newPassword);
+              setPassForm({ newPassword: "", confirm: "" });
+              setPassMsg("Senha alterada com sucesso.");
+            } catch (err) {
+              setPassError((err as Error).message ?? "Erro ao alterar a senha.");
+            } finally {
+              setPassSaving(false);
+            }
+          }}
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="label">Nova senha</label>
+              <input
+                type="password"
+                className="input"
+                value={passForm.newPassword}
+                onChange={(e) => setPassForm({ ...passForm, newPassword: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="label">Confirmar nova senha</label>
+              <input
+                type="password"
+                className="input"
+                value={passForm.confirm}
+                onChange={(e) => setPassForm({ ...passForm, confirm: e.target.value })}
+              />
+            </div>
+          </div>
+          {passError && <p className="text-sm text-red-600">{passError}</p>}
+          {passMsg && <p className="text-sm text-green-600">{passMsg}</p>}
+          <div className="flex items-center gap-3">
+            <button type="submit" className="btn-primary" disabled={passSaving}>
+              {passSaving ? "Salvando..." : "Alterar senha"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

@@ -31,8 +31,19 @@ export interface CreateTenantInput {
   phone?: string;
   whatsapp?: string;
   email?: string;
+  instagram?: string;
+  description?: string;
   segmentId?: string;
   slug: string;
+  address?: {
+    street?: string;
+    number?: string;
+    complement?: string;
+    neighborhood?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+  };
 }
 
 function slugify(value: string): string {
@@ -125,6 +136,9 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         phone: input.phone,
         whatsapp: input.whatsapp,
         email: input.email,
+        instagram: input.instagram,
+        description: input.description,
+        address: input.address,
         segmentId: input.segmentId as never,
         planId: "FREE",
         status: "active",
