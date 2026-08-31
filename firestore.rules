@@ -27,13 +27,12 @@ service cloud.firestore {
     }
 
     // ---------- TENANTS ----------
-    // Leitura pública do tenant (dados do site público: nome, serviços, etc).
-    // Dados sensíveis (CPF/CNPJ, e-mail) devem ser movidos para
-    // tenants/{tenantId}/private em produção. Escrita apenas por membros do tenant.
+    // O documento do tenant contém dados sensíveis (cnpjCpf, ownerUserId,
+    // planId, settings, limits). Portanto, ele NÃO é de leitura pública.
+    // O site público consome dados sanitizados via API route (Admin SDK).
+    // Escrita apenas por membros do tenant / papel de plataforma.
     match /tenants/{tenantId} {
-      allow read: if request.auth != null
-        && (isTenantMember(tenantId) || isPlatformRole())
-        || request.auth == null; // site público
+      allow read: if request.auth != null && (isTenantMember(tenantId) || isPlatformRole());
       allow create: if request.auth != null
         && request.resource.data.ownerUserId == request.auth.uid;
       allow update: if request.auth != null && isTenantMember(tenantId);
@@ -51,15 +50,15 @@ service cloud.firestore {
       }
 
       match /services/{docId} {
-        // Catálogo público: o site público do tenant exibe os serviços sem login.
-        // Escrita apenas por membros autorizados.
-        allow read: if true;
+        // Catálogo servido ao site público via API route (Admin SDK).
+        // No Firestore, somente membros do tenant acessam.
+        allow read: if isMember();
         allow write: if isMember() && hasRole(['TENANT_OWNER', 'TENANT_ADMIN', 'MANAGER']);
       }
 
       match /professionals/{docId} {
-        // Catálogo público: site público exibe profissionais sem login.
-        allow read: if true;
+        // Catálogo servido ao site público via API route (Admin SDK).
+        allow read: if isMember();
         allow write: if isMember() && hasRole(['TENANT_OWNER', 'TENANT_ADMIN', 'MANAGER']);
       }
 

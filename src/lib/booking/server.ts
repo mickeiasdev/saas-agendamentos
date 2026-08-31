@@ -171,6 +171,7 @@ async function getMonthAppointmentCount(db: Firestore, tenantId: string, startAt
     .collection("appointments")
     .where("startAt", ">=", first)
     .where("startAt", "<", next)
+    .where("status", "in", ["pending", "confirmed", "in_progress", "completed"])
     .count()
     .get();
   return snap.data().count;
@@ -266,8 +267,13 @@ export async function createPublicAppointment(
   );
 
   const startAt = instantFromWallClock(input.date, input.time, tz);
-  if (startAt.getTime() <= Date.now()) {
-    throw new BookingError("Não é possível agendar em um horário que já passou.");
+  const leadTime = tenant.settings?.bookingLeadTimeMinutes ?? 0;
+  if (startAt.getTime() <= Date.now() + leadTime * 60000) {
+    throw new BookingError(
+      leadTime > 0
+        ? `Os agendamentos devem ser feitos com pelo menos ${leadTime} minuto(s) de antecedência.`
+        : "Não é possível agendar em um horário que já passou."
+    );
   }
   const endAt = new Date(startAt.getTime() + service.durationMinutes * 60000);
 
@@ -292,6 +298,12 @@ export async function createPublicAppointment(
 
   let finalPrice = service.price;
   let couponApplied = false;
+
+  const cancelWindow = tenant.settings?.bookingCancelWindowMinutes ?? 0;
+  const cancelWindowDeadline = cancelWindow > 0
+    ? new Date(startAt.getTime() - cancelWindow * 60000)
+    : null;
+  const needsConfirmation = tenant.settings?.confirmationRequired ?? false;
 
   await db.runTransaction(async (tx) => {
     const existing = await tx.get(ref);
@@ -329,28 +341,35 @@ export async function createPublicAppointment(
       couponApplied = true;
     }
 
-    tx.set(ref, {
-      tenantId: tenant.id,
-      professionalId: professional.id,
-      serviceId: service.id,
-      customerId,
-      startAt,
-      endAt,
-      status: "pending",
-      paymentStatus: "pending",
-      price,
-      notes: input.notes ?? null,
-      createdBy: "customer",
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-    finalPrice = price;
+  const cancelWindow = tenant.settings?.bookingCancelWindowMinutes ?? 0;
+  const cancelWindowDeadline = cancelWindow > 0
+    ? new Date(startAt.getTime() - cancelWindow * 60000)
+    : null;
+  const needsConfirmation = tenant.settings?.confirmationRequired ?? false;
+
+  tx.set(ref, {
+    professionalId: professional.id,
+    serviceId: service.id,
+    customerId,
+    startAt,
+    endAt,
+    status: needsConfirmation ? "pending" : "confirmed",
+    paymentStatus: "pending",
+    price,
+    notes: input.notes ?? null,
+    cancelWindowDeadline,
+    createdBy: "customer",
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
   });
+  finalPrice = price;
+  });
+  const confirmedLabel = needsConfirmation ? "aguardando confirmação" : "confirmado";
 
   await createNotification(db, tenant.id, {
-    type: "appointment",
+    type: needsConfirmation ? "appointment" : "confirmation",
     title: "Novo agendamento no site",
-    body: `${input.customer.name} reservou ${service.name} com ${professional.name} em ${input.date} às ${input.time}.`,
+    body: `${input.customer.name} reservou ${service.name} com ${professional.name} em ${input.date} às ${input.time} (${confirmedLabel}).`,
   });
 
   return { appointmentId: slotId, customerId, price: finalPrice, couponApplied };

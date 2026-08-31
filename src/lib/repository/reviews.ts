@@ -1,6 +1,7 @@
 import {
   addDoc,
   deleteDoc,
+  doc,
   getDocs,
   orderBy,
   query,
@@ -38,5 +39,5 @@ export async function createReview(tenantId: string, input: CreateReviewInput): 
 }
 
 export async function deleteReview(tenantId: string, id: string): Promise<void> {
-  await deleteDoc(collectionFor(tenantId), id);
+  await deleteDoc(doc(collectionFor(tenantId), id));
 }

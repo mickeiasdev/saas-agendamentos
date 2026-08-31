@@ -25,11 +25,33 @@ export interface CustomerPage {
   nextCursor: QueryDocumentSnapshot | null;
 }
 
+function matchesSearch(c: Customer, term: string): boolean {
+  const t = term.trim().toLowerCase();
+  if (!t) return true;
+  return (
+    c.name.toLowerCase().includes(t) ||
+    (c.email ?? "").toLowerCase().includes(t) ||
+    (c.phone ?? "").replace(/\D/g, "").includes(t.replace(/\D/g, "")) ||
+    (c.whatsapp ?? "").replace(/\D/g, "").includes(t.replace(/\D/g, ""))
+  );
+}
+
 export async function listCustomers(
   tenantId: string,
   opts: { search?: string; pageSize?: number; cursor?: QueryDocumentSnapshot | null } = {}
 ): Promise<CustomerPage> {
   const size = opts.pageSize ?? 20;
+  const search = opts.search?.trim();
+
+  if (search) {
+    const snap = await getDocs(query(collectionFor(tenantId), orderBy("name"), limit(500)));
+    const items = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }) as Customer)
+      .filter((c) => matchesSearch(c, search))
+      .slice(0, size);
+    return { items, nextCursor: null };
+  }
+
   const base = query(collectionFor(tenantId), orderBy("name"), limit(size));
   const q = opts.cursor ? query(base, startAfter(opts.cursor)) : base;
   const snap = await getDocs(q);

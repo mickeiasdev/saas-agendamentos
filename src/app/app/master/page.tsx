@@ -1,10 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { collection, getCountFromServer, query } from "firebase/firestore";
+import {
+  collection,
+  getCountFromServer,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+} from "firebase/firestore";
 import { getFirebaseFirestore } from "@/lib/firebase/client";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { can } from "@/lib/rbac/roles";
+import type { Tenant } from "@/types";
 
 interface MasterStats {
   tenants: number | null;
@@ -15,6 +23,7 @@ interface MasterStats {
 export default function MasterPage() {
   const { profile } = useAuth();
   const [stats, setStats] = useState<MasterStats>({ tenants: null, users: null, appointments: null });
+  const [tenants, setTenants] = useState<Tenant[]>([]);
   const [error, setError] = useState("");
 
   const allowed = can(profile?.platformRole as never, "master.view");
@@ -22,15 +31,29 @@ export default function MasterPage() {
   const load = useCallback(async () => {
     const db = getFirebaseFirestore();
     try {
-      const tenants = await getCountFromServer(query(collection(db, "tenants")));
-      const users = await getCountFromServer(query(collection(db, "users")));
-      const apps = await getCountFromServer(query(collection(db, "tenants"), {} as never));
+      const tenantsSnap = await getDocs(
+        query(collection(db, "tenants"), orderBy("createdAt", "desc"), limit(50))
+      );
+      const tenantDocs = tenantsSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as Tenant);
+      setTenants(tenantDocs);
+
+      const usersCount = await getCountFromServer(query(collection(db, "users")));
+      const tenantsCount = await getCountFromServer(query(collection(db, "tenants")));
+
+      let appointments = 0;
+      for (const t of tenantDocs) {
+        const snap = await getCountFromServer(
+          query(collection(db, "tenants", t.id, "appointments"))
+        );
+        appointments += snap.data().count;
+      }
+
       setStats({
-        tenants: tenants.data().count,
-        users: users.data().count,
-        appointments: null,
+        tenants: tenantsCount.data().count,
+        users: usersCount.data().count,
+        appointments,
       });
-      void apps;
+      setError("");
     } catch (err) {
       setError("Não foi possível carregar as métricas. Verifique as regras de segurança do Firestore.");
     }
@@ -72,17 +95,67 @@ export default function MasterPage() {
           <div className="text-sm text-slate-500">Usuários</div>
         </div>
         <div className="card">
-          <div className="text-3xl font-bold text-brand-600">-</div>
-          <div className="text-sm text-slate-500">
-            Agendamentos totais
-            <span className="ml-1 text-xs text-slate-400">(agregado via Cloud Function)</span>
+          <div className="text-3xl font-bold text-brand-600">
+            {stats.appointments === null ? "-" : stats.appointments}
           </div>
+          <div className="text-sm text-slate-500">Agendamentos</div>
         </div>
       </div>
 
       {error && (
         <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{error}</div>
       )}
+
+      <div className="card overflow-x-auto p-0">
+        <div className="border-b border-slate-200 px-5 py-3">
+          <h2 className="font-semibold text-slate-900">Empresas cadastradas</h2>
+        </div>
+        {tenants.length === 0 ? (
+          <p className="px-5 py-6 text-sm text-slate-500">
+            Nenhuma empresa cadastrada ainda.
+          </p>
+        ) : (
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500">
+              <tr>
+                <th className="px-5 py-3">Empresa</th>
+                <th className="px-5 py-3">Segmento</th>
+                <th className="px-5 py-3">Plano</th>
+                <th className="px-5 py-3">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {tenants.map((t) => (
+                <tr key={t.id} className="hover:bg-slate-50">
+                  <td className="px-5 py-3">
+                    <div className="font-medium text-slate-900">
+                      {t.tradeName ?? t.name}
+                    </div>
+                    <div className="text-xs text-slate-500">/{t.slug}</div>
+                  </td>
+                  <td className="px-5 py-3 text-slate-600">{t.segmentId ?? "-"}</td>
+                  <td className="px-5 py-3">
+                    <span className="badge bg-slate-100 text-slate-700">{t.planId}</span>
+                  </td>
+                  <td className="px-5 py-3">
+                    <span
+                      className={`badge ${
+                        t.status === "suspended"
+                          ? "bg-red-100 text-red-700"
+                          : t.status === "pending"
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-emerald-100 text-emerald-700"
+                      }`}
+                    >
+                      {t.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
 
       <div className="card">
         <h2 className="mb-2 font-semibold text-slate-900">Uso da Plataforma</h2>

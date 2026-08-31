@@ -138,7 +138,7 @@ export async function updateAppointmentStatus(
     updatedAt: serverTimestamp(),
   };
   if (status === "cancelled") {
-    patch.cancellationReason = extra.cancellationReason ?? "cancelado pelo cliente";
+    patch.cancellationReason = extra.cancellationReason ?? "cancelado";
   }
   await updateDoc(doc(collectionFor(tenantId), id), patch);
 }

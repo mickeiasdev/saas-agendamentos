@@ -2,18 +2,14 @@
 
 import Link from "next/link";
 import { use, useEffect, useState } from "react";
-import {
-  collection,
-  getDocs,
-  limit,
-  query,
-  where,
-  doc,
-  getDoc,
-} from "firebase/firestore";
-import { getFirebaseFirestore } from "@/lib/firebase/client";
 import { formatBRL } from "@/lib/utils/format";
 import type { Professional, Service, Tenant } from "@/types";
+
+interface PublicSiteData {
+  tenant: Tenant;
+  services: Service[];
+  professionals: Professional[];
+}
 
 export default function PublicSitePage({
   params,
@@ -27,26 +23,19 @@ export default function PublicSitePage({
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    const db = getFirebaseFirestore();
-    const q = query(collection(db, "tenants"), where("slug", "==", slug), limit(1));
-    void getDocs(q).then(async (snap) => {
-      if (snap.empty) {
-        setNotFound(true);
-        return;
-      }
-      const t = { id: snap.docs[0].id, ...snap.docs[0].data() } as Tenant;
-      setTenant(t);
-
-      const svcSnap = await getDocs(
-        query(collection(db, "tenants", t.id, "services"), where("status", "==", "active"))
-      );
-      setServices(svcSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as Service));
-
-      const proSnap = await getDocs(
-        query(collection(db, "tenants", t.id, "professionals"), where("active", "==", true))
-      );
-      setProfessionals(proSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as Professional));
-    });
+    void fetch(`/api/public/site/${encodeURIComponent(slug)}`)
+      .then(async (res) => {
+        if (res.status === 404) {
+          setNotFound(true);
+          return;
+        }
+        if (!res.ok) throw new Error("Não foi possível carregar o site.");
+        const data = (await res.json()) as PublicSiteData;
+        setTenant(data.tenant);
+        setServices(data.services);
+        setProfessionals(data.professionals);
+      })
+      .catch(() => setNotFound(true));
   }, [slug]);
 
   if (notFound) {

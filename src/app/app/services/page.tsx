@@ -10,10 +10,11 @@ import {
   type CreateServiceInput,
 } from "@/lib/repository/services";
 import { listCategories } from "@/lib/repository/categories";
+import { listProfessionals } from "@/lib/repository/professionals";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatBRL } from "@/lib/utils/format";
-import type { Service } from "@/types";
+import type { Professional, Service } from "@/types";
 
 const EMPTY_FORM: CreateServiceInput = {
   name: "",
@@ -24,12 +25,14 @@ const EMPTY_FORM: CreateServiceInput = {
   status: "active",
   requiresProfessional: true,
   commissionPercent: 0,
+  professionals: [],
 };
 
 export default function ServicesPage() {
   const { activeTenantId } = useTenant();
   const [services, setServices] = useState<Service[]>([]);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Service | null>(null);
@@ -39,12 +42,14 @@ export default function ServicesPage() {
 
   const load = useCallback(async () => {
     if (!activeTenantId) return;
-    const [svc, cats] = await Promise.all([
+    const [svc, cats, pros] = await Promise.all([
       listServices(activeTenantId),
       listCategories(activeTenantId),
+      listProfessionals(activeTenantId),
     ]);
     setServices(svc);
     setCategories(cats.map((c) => ({ id: c.id, name: c.name })));
+    setProfessionals(pros);
     setLoading(false);
   }, [activeTenantId]);
 
@@ -69,8 +74,18 @@ export default function ServicesPage() {
       status: s.status,
       requiresProfessional: s.requiresProfessional,
       commissionPercent: s.commissionPercent,
+      professionals: s.professionals ?? [],
     });
     setModalOpen(true);
+  }
+
+  function toggleProfessional(professionalId: string) {
+    setForm((f) => ({
+      ...f,
+      professionals: f.professionals!.includes(professionalId)
+        ? f.professionals!.filter((id) => id !== professionalId)
+        : [...f.professionals!, professionalId],
+    }));
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -131,6 +146,7 @@ export default function ServicesPage() {
                 <th className="px-4 py-3">Categoria</th>
                 <th className="px-4 py-3">Duração</th>
                 <th className="px-4 py-3">Preço</th>
+                <th className="px-4 py-3">Profissionais</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3 text-right">Ações</th>
               </tr>
@@ -144,6 +160,11 @@ export default function ServicesPage() {
                   </td>
                   <td className="px-4 py-3 text-slate-600">{s.durationMinutes} min</td>
                   <td className="px-4 py-3 text-slate-900">{formatBRL(s.price)}</td>
+                  <td className="px-4 py-3 text-slate-600">
+                    {(s.professionals ?? []).length === 0
+                      ? "-"
+                      : s.professionals!.map((pid) => professionals.find((p) => p.id === pid)?.name ?? pid).join(", ")}
+                  </td>
                   <td className="px-4 py-3">
                     <span
                       className={`badge ${
@@ -257,6 +278,28 @@ export default function ServicesPage() {
               <option value="active">Ativo</option>
               <option value="inactive">Inativo</option>
             </select>
+          </div>
+          <div>
+            <label className="label">Profissionais que realizam este serviço</label>
+            <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-slate-200 p-2">
+              {professionals.length === 0 && (
+                <p className="text-sm text-slate-500">Nenhum profissional cadastrado ainda.</p>
+              )}
+              {professionals.map((p) => (
+                <label key={p.id} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.professionals!.includes(p.id)}
+                    onChange={() => toggleProfessional(p.id)}
+                    className="h-4 w-4 rounded border-slate-300 text-brand-600"
+                  />
+                  {p.name}
+                </label>
+              ))}
+            </div>
+            <p className="mt-1 text-xs text-slate-400">
+              Os vínculos são sincronizados com o cadastro de profissionais automaticamente.
+            </p>
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex justify-end gap-3">

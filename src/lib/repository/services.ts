@@ -8,6 +8,7 @@ import {
   orderBy,
   serverTimestamp,
   updateDoc,
+  writeBatch,
 } from "firebase/firestore";
 import { getFirebaseFirestore } from "@/lib/firebase/client";
 import { tenantCollections } from "./collections";
@@ -15,6 +16,32 @@ import type { Service } from "@/types";
 
 const collectionFor = (tenantId: string) =>
   tenantCollections(getFirebaseFirestore(), tenantId).services();
+
+/**
+ * Mantém a lista de profissionais (serviceIds) consistente com os
+ * profissionais vinculados a um serviço (professionals).
+ */
+export async function syncServiceProfessionals(
+  tenantId: string,
+  serviceId: string,
+  professionalIds: string[]
+): Promise<void> {
+  const db = getFirebaseFirestore();
+  const prosSnap = await getDocs(tenantCollections(db, tenantId).professionals());
+  const batch = writeBatch(db);
+  for (const d of prosSnap.docs) {
+    const current: string[] = d.data().serviceIds ?? [];
+    const has = current.includes(serviceId);
+    const should = professionalIds.includes(d.id);
+    if (has !== should) {
+      batch.update(d.ref, {
+        serviceIds: should ? [...current, serviceId] : current.filter((id) => id !== serviceId),
+        updatedAt: serverTimestamp(),
+      });
+    }
+  }
+  await batch.commit();
+}
 
 export async function listServices(tenantId: string, onlyActive = false): Promise<Service[]> {
   const q = query(collectionFor(tenantId), orderBy("name"));
@@ -51,6 +78,9 @@ export async function createService(
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
+  if (input.professionals?.length) {
+    await syncServiceProfessionals(tenantId, docRef.id, input.professionals);
+  }
   return docRef.id;
 }
 
@@ -59,10 +89,14 @@ export async function updateService(
   id: string,
   input: Partial<CreateServiceInput>
 ): Promise<void> {
+  const { professionals, ...rest } = input;
   await updateDoc(doc(collectionFor(tenantId), id), {
-    ...input,
+    ...rest,
     updatedAt: serverTimestamp(),
   });
+  if (professionals) {
+    await syncServiceProfessionals(tenantId, id, professionals);
+  }
 }
 
 export async function removeService(tenantId: string, id: string): Promise<void> {
