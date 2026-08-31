@@ -55,7 +55,7 @@ function buildTenant(slug: string): Tenant {
     logoUrl: MOCK_LOGO,
     bannerUrl: MOCK_BANNER,
     segmentId: "barber",
-    planId: "PRO",
+    planId: "ALL",
     status: "active",
     subscriptionStatus: "ACTIVE",
     subscriptionEndsAt: null,

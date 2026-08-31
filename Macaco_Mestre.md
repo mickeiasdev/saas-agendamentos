@@ -513,21 +513,28 @@ Transformar o MVP em produto comercial.
 Continuar utilizando serviços gratuitos sempre que possível.
 ⸻
 FASE 2.1 — PLANOS
-Criar:
-FREE
-BASIC
-PRO
-PREMIUM
-Os nomes podem ser alterados. ⸻
+Criar UM ÚNICO plano com todos os recursos incluídos.
+NÃO existir plano gratuito.
+NÃO existir múltiplos planos (FREE/BASIC/PRO/PREMIUM).
+O plano único tem TUDO habilitado por padrão.
+O nome pode ser alterado comercialmente; o ID é estável (ex.: ALL).
+Modelo conceitual:
+PLANO ÚNICO
+↓
+todos os recursos
+↓
+todas as empresas usam o mesmo plano
+A estrutura de dados (plans/{planId}) permanece preparada, caso no futuro
+seja necessário segmentar — mas o produto inicial tem apenas um plano. ⸻
 FASE 2.2 — LIMITES
-Controlar:
-* profissionais;
-* agendamentos;
-* armazenamento;
-* unidades;
-* recursos. ⸻
+NÃO aplicar limites de uso no produto inicial.
+O plano único não restringe: profissionais, agendamentos, armazenamento,
+unidades ou recursos.
+Sem "limite atingido" nem bloqueios por plano.
+A arquitetura de limites (checkLimit, PlanLimits) permanece preparada para
+uso futuro, mas nenhum limite é aplicado no plano único. ⸻
 FASE 2.3 — FEATURE FLAGS
-Criar:
+Manter a estrutura de feature flags, porém TODAS habilitadas no plano único:
 payments
 whatsapp
 custom_domain
@@ -535,7 +542,9 @@ reports
 loyalty
 inventory
 multi_branch
-api ⸻
+api
+Flags existem para controle de ativação futura (ex.: integrar um gateway),
+não para diferenciar planos. ⸻
 FASE 2.4 — ASSINATURAS
 Criar estrutura:
 TRIAL
@@ -691,8 +700,8 @@ Gerar QR Code para cada empresa. ⸻
 FASE 2 — CRITÉRIO DE ACEITE
 Ao terminar:
 * SaaS comercialmente utilizável;
-* planos;
-* limites;
+* plano único com tudo incluso (sem plano gratuito);
+* limites não aplicados (arquitetura preparada);
 * CRM;
 * relatórios;
 * financeiro;
@@ -1150,8 +1159,8 @@ Firebase
 SaaS
 * [ ] Multi-tenant
 * [ ] RBAC
-* [ ] Planos
-* [ ] Limites
+* [ ] Plano único com tudo incluso
+* [ ] Sem limites de uso aplicados
 * [ ] Assinaturas
 * [ ] Painel Master
 Agendamento

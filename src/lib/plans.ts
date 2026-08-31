@@ -9,105 +9,52 @@ export interface PlanDefinition {
 }
 
 /**
- * Planos da plataforma (Fase 2).
- * Os limites daqui são aplicados no backend (API de booking) e exibidos no painel.
- * Nomes podem ser alterados comercialmente; os IDs são estáveis.
+ * PLANO ÚNICO da plataforma.
+ *
+ * O produto inicial tem UM único plano com TODOS os recursos incluídos:
+ * não existe plano gratuito nem planos segmentados (FREE/BASIC/PRO/PREMIUM).
+ *
+ * Limites: nenhum limite é aplicado no produto inicial (valores -1 =
+ * ilimitado). A estrutura PlanLimits/checkLimit permanece preparada para
+ * uso futuro, mas o plano único não restringe nada.
+ *
+ * Feature flags: todas habilitadas por padrão. As flags existem para
+ * controle de ativação futura (ex.: integrar um gateway de pagamento),
+ * não para diferenciar planos.
  */
-export const PLANS: Record<PlanId, PlanDefinition> = {
-  FREE: {
-    id: "FREE",
-    name: "Grátis",
-    description: "Para começar: até 3 profissionais e 500 agendamentos/mês.",
-    limits: {
-      maxProfessionals: 3,
-      maxCustomers: 200,
-      maxAppointmentsPerMonth: 500,
-      maxStorageGb: 1,
-      maxBranches: 1,
-    },
-    features: {
-      payments: false,
-      whatsapp: false,
-      customDomain: false,
-      reports: false,
-      loyalty: false,
-      inventory: false,
-      multiBranch: false,
-      api: false,
-    },
+export const PLAN: PlanDefinition = {
+  id: "ALL",
+  name: "Completo",
+  description: "Plano único com todos os recursos da plataforma incluídos, sem limites.",
+  limits: {
+    maxProfessionals: -1, // ilimitado
+    maxCustomers: -1, // ilimitado
+    maxAppointmentsPerMonth: -1, // ilimitado
+    maxStorageGb: -1, // ilimitado
+    maxBranches: -1, // ilimitado
   },
-  BASIC: {
-    id: "BASIC",
-    name: "Básico",
-    description: "Para negócios em crescimento: até 8 profissionais.",
-    limits: {
-      maxProfessionals: 8,
-      maxCustomers: 2000,
-      maxAppointmentsPerMonth: 3000,
-      maxStorageGb: 5,
-      maxBranches: 1,
-    },
-    features: {
-      payments: true,
-      whatsapp: false,
-      customDomain: false,
-      reports: false,
-      loyalty: false,
-      inventory: false,
-      multiBranch: false,
-      api: false,
-    },
-  },
-  PRO: {
-    id: "PRO",
-    name: "Profissional",
-    description: "Para operação completa: relatórios, cupons e WhatsApp.",
-    limits: {
-      maxProfessionals: 25,
-      maxCustomers: 10000,
-      maxAppointmentsPerMonth: 15000,
-      maxStorageGb: 20,
-      maxBranches: 3,
-    },
-    features: {
-      payments: true,
-      whatsapp: true,
-      customDomain: true,
-      reports: true,
-      loyalty: true,
-      inventory: false,
-      multiBranch: true,
-      api: false,
-    },
-  },
-  PREMIUM: {
-    id: "PREMIUM",
-    name: "Premium",
-    description: "Escala máxima: unidades, estoque, API e prioridade total.",
-    limits: {
-      maxProfessionals: 100,
-      maxCustomers: 100000,
-      maxAppointmentsPerMonth: 100000,
-      maxStorageGb: 100,
-      maxBranches: 10,
-    },
-    features: {
-      payments: true,
-      whatsapp: true,
-      customDomain: true,
-      reports: true,
-      loyalty: true,
-      inventory: true,
-      multiBranch: true,
-      api: true,
-    },
+  features: {
+    payments: true,
+    whatsapp: true,
+    customDomain: true,
+    reports: true,
+    loyalty: true,
+    inventory: true,
+    multiBranch: true,
+    api: true,
   },
 };
 
-export const PLAN_ORDER: PlanId[] = ["FREE", "BASIC", "PRO", "PREMIUM"];
+export const PLAN_ID: PlanId = "ALL";
+
+export const PLANS: Record<PlanId, PlanDefinition> = {
+  ALL: PLAN,
+};
+
+export const PLAN_ORDER: PlanId[] = ["ALL"];
 
 export function getPlan(planId: PlanId): PlanDefinition {
-  return PLANS[planId] ?? PLANS.FREE;
+  return PLANS[planId] ?? PLAN;
 }
 
 export function getPlanLimits(planId: PlanId): PlanLimits {

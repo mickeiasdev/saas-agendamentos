@@ -1,6 +1,6 @@
 import { FieldValue, type Firestore } from "firebase-admin/firestore";
 import { dayOfWeekOf, instantFromWallClock, minutesToTime, toMinutes, validateSlotAvailability, wallClockOf, DEFAULT_TZ } from "./timezone";
-import { getPlan, checkLimit } from "@/lib/plans";
+import { getPlan, checkLimit, PLAN_ID } from "@/lib/plans";
 import { applyCoupon } from "@/lib/coupons";
 import type { Appointment, Coupon, Holiday, Professional, ProfessionalAvailability, Service, Tenant } from "@/types";
 
@@ -277,14 +277,18 @@ export async function createPublicAppointment(
   }
   const endAt = new Date(startAt.getTime() + service.durationMinutes * 60000);
 
-  const monthCount = await getMonthAppointmentCount(db, tenant.id, startAt);
-  const plan = getPlan(tenant.planId ?? "FREE");
-  const limitCheck = checkLimit(
-    monthCount,
-    plan.limits.maxAppointmentsPerMonth,
-    "agendamentos mensais"
-  );
-  if (!limitCheck.ok) throw new BookingError(limitCheck.message ?? "Limite do plano atingido.");
+  const plan = getPlan(tenant.planId ?? PLAN_ID);
+  // Plano único: sem limites aplicados (maxAppointmentsPerMonth < 0 = ilimitado).
+  // A checagem só roda quando houver um limite real configurado no futuro.
+  if (plan.limits.maxAppointmentsPerMonth >= 0) {
+    const monthCount = await getMonthAppointmentCount(db, tenant.id, startAt);
+    const limitCheck = checkLimit(
+      monthCount,
+      plan.limits.maxAppointmentsPerMonth,
+      "agendamentos mensais"
+    );
+    if (!limitCheck.ok) throw new BookingError(limitCheck.message ?? "Limite do plano atingido.");
+  }
 
   const { availability, holidays } = await loadSchedule(db, tenant.id, professional.id, input.date, tz);
   const customerId = await upsertCustomerForBooking(db, tenant.id, input.customer);

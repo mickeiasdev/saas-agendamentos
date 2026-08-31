@@ -9,7 +9,7 @@ export type Role =
 
 export type TenantStatus = "active" | "trial" | "suspended" | "pending";
 export type SubscriptionStatus = "TRIAL" | "ACTIVE" | "PAST_DUE" | "SUSPENDED" | "CANCELLED";
-export type PlanId = "FREE" | "BASIC" | "PRO" | "PREMIUM";
+export type PlanId = "ALL";
 
 export type SegmentId =
   | "barber"

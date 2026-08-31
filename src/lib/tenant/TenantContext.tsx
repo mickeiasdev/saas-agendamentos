@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 import { getFirebaseFirestore } from "@/lib/firebase/client";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { getPlanLimits, PLAN_ID } from "@/lib/plans";
 import type { Tenant, TenantUser } from "@/types";
 
 export interface TenantState {
@@ -140,7 +141,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         description: input.description,
         address: input.address,
         segmentId: input.segmentId as never,
-        planId: "FREE",
+        planId: "ALL",
         status: "active",
         subscriptionStatus: "TRIAL",
         ownerUserId: user.uid,
@@ -168,22 +169,16 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
           sectionOrder: ["services", "professionals", "about", "contact"],
         },
         featureFlags: {
-          payments: false,
-          whatsapp: false,
-          customDomain: false,
-          reports: false,
-          loyalty: false,
-          inventory: false,
-          multiBranch: false,
-          api: false,
+          payments: true,
+          whatsapp: true,
+          customDomain: true,
+          reports: true,
+          loyalty: true,
+          inventory: true,
+          multiBranch: true,
+          api: true,
         },
-        limits: {
-          maxProfessionals: 3,
-          maxCustomers: 200,
-          maxAppointmentsPerMonth: 500,
-          maxStorageGb: 1,
-          maxBranches: 1,
-        },
+        limits: getPlanLimits(PLAN_ID),
       };
 
       const member: TenantUser = {
