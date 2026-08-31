@@ -70,3 +70,61 @@ export function webhookStatusLabel(status: WebhookEventStatus): string {
   };
   return labels[status] ?? status;
 }
+
+// ---------- FASE 3.14: WEBHOOKS PÚBLICOS (saída) ----------
+
+export const PUBLIC_WEBHOOK_EVENTS = [
+  "appointment.created",
+  "appointment.confirmed",
+  "appointment.cancelled",
+  "payment.approved",
+  "customer.created",
+] as const;
+
+export type PublicWebhookEvent = (typeof PUBLIC_WEBHOOK_EVENTS)[number];
+
+export function isPublicWebhookEvent(event: string): event is PublicWebhookEvent {
+  return (PUBLIC_WEBHOOK_EVENTS as readonly string[]).includes(event);
+}
+
+export function shouldDeliver(events: string[], event: string): boolean {
+  return events.includes(event);
+}
+
+/**
+ * Monta o payload do webhook público: evento, dados do tenant e timestamp.
+ * O payload é canônico (JSON ordenado) para gerar assinatura determinística.
+ */
+export function buildWebhookPayload(
+  event: string,
+  tenantId: string,
+  data: Record<string, unknown>
+): Record<string, unknown> {
+  return {
+    event,
+    tenantId,
+    timestamp: new Date().toISOString(),
+    data,
+  };
+}
+
+export interface WebhookHeaders {
+  [key: string]: string;
+}
+
+/**
+ * Cabeçalhos de entrega com assinatura HMAC-SHA256 do corpo bruto.
+ * O receptor pode verificar a assinatura para garantir autenticidade.
+ */
+export function buildWebhookHeaders(
+  signature: string,
+  deliveryId: string,
+  event: string
+): WebhookHeaders {
+  return {
+    "Content-Type": "application/json",
+    "X-Agenda-Signature": signature,
+    "X-Agenda-Delivery": deliveryId,
+    "X-Agenda-Event": event,
+  };
+}

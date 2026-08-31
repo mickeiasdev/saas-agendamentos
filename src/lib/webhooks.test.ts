@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   WEBHOOK_STATUS_FLOW,
+  buildWebhookHeaders,
+  buildWebhookPayload,
   canTransitionWebhook,
   hashString,
+  isPublicWebhookEvent,
   makeIdempotencyKey,
+  shouldDeliver,
   webhookStatusLabel,
 } from "./webhooks";
 
@@ -44,5 +48,33 @@ describe("webhooks (Fase 2.8)", () => {
   it("retorna rótulos legíveis", () => {
     expect(webhookStatusLabel("processed")).toBe("Processado");
     expect(webhookStatusLabel("failed")).toBe("Falhou");
+  });
+});
+
+describe("public webhooks (Fase 3.14)", () => {
+  it("reconhece eventos públicos", () => {
+    expect(isPublicWebhookEvent("appointment.created")).toBe(true);
+    expect(isPublicWebhookEvent("payment.approved")).toBe(true);
+    expect(isPublicWebhookEvent("outro.evento")).toBe(false);
+  });
+
+  it("verifica se o webhook deve entregar o evento", () => {
+    expect(shouldDeliver(["appointment.created", "payment.approved"], "appointment.created")).toBe(true);
+    expect(shouldDeliver(["appointment.created"], "payment.approved")).toBe(false);
+  });
+
+  it("constrói payload com evento, tenant e timestamp", () => {
+    const payload = buildWebhookPayload("appointment.created", "t1", { id: "a1" });
+    expect(payload.event).toBe("appointment.created");
+    expect(payload.tenantId).toBe("t1");
+    expect(payload.data).toEqual({ id: "a1" });
+    expect(payload.timestamp).toBeDefined();
+  });
+
+  it("constrói cabeçalhos de entrega", () => {
+    const headers = buildWebhookHeaders("sig", "delivery-1", "appointment.created");
+    expect(headers["X-Agenda-Signature"]).toBe("sig");
+    expect(headers["X-Agenda-Delivery"]).toBe("delivery-1");
+    expect(headers["X-Agenda-Event"]).toBe("appointment.created");
   });
 });

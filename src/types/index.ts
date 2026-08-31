@@ -54,6 +54,7 @@ export interface Tenant {
   status: TenantStatus;
   subscriptionStatus: SubscriptionStatus;
   subscriptionEndsAt?: TimestampLike | null;
+  customDomain?: CustomDomain | null;
   createdAt: TimestampLike;
   updatedAt: TimestampLike;
   ownerUserId: string;
@@ -61,6 +62,16 @@ export interface Tenant {
   branding: TenantBranding;
   featureFlags: FeatureFlags;
   limits: PlanLimits;
+}
+
+// ---------- FASE 3: DOMÍNIO PERSONALIZADO (3.2) ----------
+
+export interface CustomDomain {
+  host: string; // www.cliente.com.br
+  verified: boolean;
+  verificationToken?: string;
+  requestedAt?: TimestampLike | null;
+  verifiedAt?: TimestampLike | null;
 }
 
 export interface TenantSettings {
@@ -470,3 +481,374 @@ export type TimestampLike = Date | {
   nanoseconds?: number;
   toDate?: () => Date;
 };
+
+// ---------- FASE 3: MULTIUNIDADES (3.1) ----------
+
+export interface Branch {
+  id: string;
+  tenantId: string;
+  name: string;
+  address?: Address;
+  phone?: string;
+  whatsapp?: string;
+  email?: string;
+  active: boolean;
+  isMain: boolean;
+  createdAt: TimestampLike;
+  updatedAt: TimestampLike;
+}
+
+// ---------- FASE 3: CALENDÁRIOS (3.5) ----------
+
+export type CalendarProviderType = "google" | "outlook";
+
+export interface CalendarIntegration {
+  id: string;
+  tenantId: string;
+  provider: CalendarProviderType;
+  enabled: boolean;
+  connectedAt?: TimestampLike | null;
+  accountEmail?: string;
+  syncAppointments: boolean;
+  createdAt: TimestampLike;
+  updatedAt: TimestampLike;
+}
+
+// ---------- FASE 3: BOT WHATSAPP (3.6) ----------
+
+export interface WhatsAppBotConfig {
+  id: string;
+  tenantId: string;
+  enabled: boolean;
+  provider: string;
+  welcomeMessage: string;
+  autoReply: boolean;
+  allowBooking: boolean;
+  workingHoursOnly: boolean;
+  createdAt: TimestampLike;
+  updatedAt: TimestampLike;
+}
+
+// ---------- FASE 3: MARKETING AUTOMÁTICO (3.7) ----------
+
+export type AutomationTrigger =
+  | "customer_inactive"
+  | "birthday"
+  | "appointment_tomorrow"
+  | "appointment_completed";
+
+export type AutomationChannel = "notification" | "email" | "whatsapp";
+
+export interface Automation {
+  id: string;
+  tenantId: string;
+  name: string;
+  trigger: AutomationTrigger;
+  channel: AutomationChannel;
+  config: Record<string, unknown>;
+  enabled: boolean;
+  createdAt: TimestampLike;
+  updatedAt: TimestampLike;
+}
+
+export type AutomationRunStatus = "pending" | "sent" | "skipped" | "failed";
+
+export interface AutomationRun {
+  id: string;
+  tenantId: string;
+  automationId: string;
+  targetId: string;
+  status: AutomationRunStatus;
+  executedAt?: TimestampLike | null;
+  error?: string;
+  createdAt: TimestampLike;
+}
+
+// ---------- FASE 3: PACOTES (3.8) ----------
+
+export interface PackageItem {
+  serviceId: string;
+  serviceName: string;
+  quantity: number;
+}
+
+export interface ServicePackage {
+  id: string;
+  tenantId: string;
+  name: string;
+  description?: string;
+  items: PackageItem[];
+  price: number;
+  validDays?: number;
+  active: boolean;
+  createdAt: TimestampLike;
+  updatedAt: TimestampLike;
+}
+
+export type CustomerPackageStatus = "active" | "expired" | "used";
+
+export interface CustomerPackageItem {
+  serviceId: string;
+  serviceName: string;
+  total: number;
+  used: number;
+}
+
+export interface CustomerPackage {
+  id: string;
+  tenantId: string;
+  packageId: string;
+  packageName: string;
+  customerId: string;
+  customerName: string;
+  items: CustomerPackageItem[];
+  price: number;
+  purchasedAt: TimestampLike;
+  expiresAt?: TimestampLike | null;
+  status: CustomerPackageStatus;
+  createdAt: TimestampLike;
+}
+
+// ---------- FASE 3: ASSINATURAS DOS CLIENTES (3.9) ----------
+
+export type BillingCycle = "weekly" | "monthly" | "quarterly" | "yearly";
+
+export interface CustomerSubscriptionPlan {
+  id: string;
+  tenantId: string;
+  name: string;
+  description?: string;
+  price: number;
+  billingCycle: BillingCycle;
+  appointmentsIncluded: number;
+  active: boolean;
+  createdAt: TimestampLike;
+  updatedAt: TimestampLike;
+}
+
+export type CustomerSubscriptionStatus = "active" | "paused" | "cancelled" | "expired";
+
+export interface CustomerSubscription {
+  id: string;
+  tenantId: string;
+  planId: string;
+  planName: string;
+  customerId: string;
+  customerName: string;
+  price: number;
+  appointmentsIncluded: number;
+  appointmentsUsed: number;
+  cycleStart: TimestampLike;
+  cycleEnd: TimestampLike;
+  status: CustomerSubscriptionStatus;
+  createdAt: TimestampLike;
+  updatedAt: TimestampLike;
+}
+
+// ---------- FASE 3: ESTOQUE (3.10) ----------
+
+export interface Product {
+  id: string;
+  tenantId: string;
+  name: string;
+  description?: string;
+  sku?: string;
+  costPrice: number;
+  salePrice: number;
+  quantity: number;
+  minQuantity: number;
+  unit?: string;
+  supplierId?: string;
+  active: boolean;
+  createdAt: TimestampLike;
+  updatedAt: TimestampLike;
+}
+
+export interface Supplier {
+  id: string;
+  tenantId: string;
+  name: string;
+  contact?: string;
+  phone?: string;
+  email?: string;
+  createdAt: TimestampLike;
+}
+
+export type StockMovementType = "in" | "out" | "adjustment";
+
+export interface StockMovement {
+  id: string;
+  tenantId: string;
+  productId: string;
+  productName: string;
+  type: StockMovementType;
+  quantity: number;
+  reason?: string;
+  sourceId?: string;
+  sourceType?: "purchase" | "sale" | "adjustment";
+  createdAt: TimestampLike;
+}
+
+// ---------- FASE 3: VENDAS (3.11) ----------
+
+export interface SaleItem {
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+}
+
+export type SaleStatus = "completed" | "cancelled" | "refunded";
+
+export interface Sale {
+  id: string;
+  tenantId: string;
+  items: SaleItem[];
+  total: number;
+  discount: number;
+  customerId?: string;
+  customerName?: string;
+  paymentMethod: "cash" | "pix" | "card" | "other";
+  status: SaleStatus;
+  createdAt: TimestampLike;
+  updatedAt: TimestampLike;
+}
+
+// ---------- FASE 3: API KEYS (3.13) ----------
+
+export type ApiKeyScope =
+  | "appointments:read"
+  | "appointments:write"
+  | "customers:read"
+  | "customers:write"
+  | "services:read"
+  | "professionals:read";
+
+export interface ApiKey {
+  id: string;
+  tenantId: string;
+  name: string;
+  prefix: string;
+  keyHash: string;
+  scopes: ApiKeyScope[];
+  active: boolean;
+  expiresAt?: TimestampLike | null;
+  lastUsedAt?: TimestampLike | null;
+  createdAt: TimestampLike;
+  revokedAt?: TimestampLike | null;
+}
+
+export interface ApiKeyLog {
+  id: string;
+  tenantId: string;
+  apiKeyId: string;
+  method: string;
+  path: string;
+  status: number;
+  ip?: string;
+  createdAt: TimestampLike;
+}
+
+// ---------- FASE 3: WEBHOOKS PÚBLICOS (3.14) ----------
+
+export interface OutboundWebhook {
+  id: string;
+  tenantId: string;
+  url: string;
+  secret: string;
+  events: string[];
+  active: boolean;
+  createdAt: TimestampLike;
+  updatedAt: TimestampLike;
+}
+
+export type DeliveryStatus = "pending" | "delivered" | "failed";
+
+export interface OutboundWebhookDelivery {
+  id: string;
+  tenantId: string;
+  webhookId: string;
+  event: string;
+  payload: Record<string, unknown>;
+  status: DeliveryStatus;
+  attempts: number;
+  lastError?: string;
+  deliveredAt?: TimestampLike | null;
+  createdAt: TimestampLike;
+}
+
+// ---------- FASE 3: SUPORTE (3.15) ----------
+
+export type SupportTicketStatus = "open" | "in_progress" | "waiting" | "resolved" | "closed";
+export type SupportTicketPriority = "low" | "normal" | "high" | "urgent";
+
+export interface SupportTicket {
+  id: string;
+  tenantId: string;
+  subject: string;
+  category?: string;
+  priority: SupportTicketPriority;
+  status: SupportTicketStatus;
+  createdBy: string;
+  createdByName?: string;
+  assignedTo?: string;
+  createdAt: TimestampLike;
+  updatedAt: TimestampLike;
+}
+
+export interface SupportMessage {
+  id: string;
+  tenantId: string;
+  ticketId: string;
+  authorId: string;
+  authorName: string;
+  body: string;
+  createdAt: TimestampLike;
+}
+
+// ---------- FASE 3: IMPERSONATION (3.16) ----------
+
+export interface ImpersonationSession {
+  id: string;
+  adminUid: string;
+  adminEmail?: string;
+  tenantId: string;
+  reason: string;
+  startedAt: TimestampLike;
+  endedAt?: TimestampLike | null;
+  status: "active" | "ended";
+}
+
+// ---------- FASE 3: LGPD (3.19) ----------
+
+export type ConsentType = "policy" | "terms" | "marketing" | "data_processing";
+
+export interface LgpdConsent {
+  id: string;
+  tenantId: string;
+  subject: "customer" | "user";
+  subjectId: string;
+  consentType: ConsentType;
+  granted: boolean;
+  grantedAt?: TimestampLike | null;
+  revokedAt?: TimestampLike | null;
+  createdAt: TimestampLike;
+}
+
+// ---------- FASE 3: FILAS/JOBS (3.23) ----------
+
+export type JobStatus = "queued" | "running" | "completed" | "failed";
+
+export interface Job {
+  id: string;
+  tenantId?: string;
+  type: string;
+  payload: Record<string, unknown>;
+  status: JobStatus;
+  attempts: number;
+  maxAttempts: number;
+  runAt: TimestampLike;
+  lastError?: string;
+  createdAt: TimestampLike;
+  updatedAt: TimestampLike;
+}
