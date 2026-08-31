@@ -348,6 +348,123 @@ export interface Slot {
   available: boolean;
 }
 
+// ---------- FASE 2: ASSINATURAS ----------
+
+export interface Subscription {
+  id: string;
+  tenantId: string;
+  planId: PlanId;
+  status: SubscriptionStatus;
+  startedAt: TimestampLike;
+  trialEndsAt?: TimestampLike | null;
+  currentPeriodStart: TimestampLike;
+  currentPeriodEnd: TimestampLike;
+  cancelAtPeriodEnd: boolean;
+  canceledAt?: TimestampLike | null;
+  updatedAt: TimestampLike;
+}
+
+// ---------- FASE 2: WEBHOOKS ----------
+
+export interface WebhookEvent {
+  id: string;
+  tenantId: string;
+  source: string;
+  event: string;
+  payload: Record<string, unknown>;
+  idempotencyKey: string;
+  status: "received" | "processing" | "processed" | "failed";
+  attempts: number;
+  lastError?: string;
+  processedAt?: TimestampLike | null;
+  createdAt: TimestampLike;
+}
+
+// ---------- FASE 2: FIDELIDADE ----------
+
+export interface LoyaltyReward {
+  id: string;
+  tenantId: string;
+  name: string;
+  description?: string;
+  pointsCost: number;
+  active: boolean;
+  createdAt: TimestampLike;
+}
+
+export interface LoyaltyAccount {
+  id: string;
+  tenantId: string;
+  customerId: string;
+  customerName: string;
+  points: number;
+  pointsEarned: number;
+  pointsSpent: number;
+  updatedAt: TimestampLike;
+}
+
+export interface LoyaltyTransaction {
+  id: string;
+  tenantId: string;
+  customerId: string;
+  type: "earn" | "redeem";
+  points: number;
+  description: string;
+  appointmentId?: string;
+  rewardId?: string;
+  createdAt: TimestampLike;
+}
+
+// ---------- FASE 2: FINANCEIRO ----------
+
+export type FinancialEntryType = "income" | "expense";
+
+export type FinancialCategory =
+  | "appointments"
+  | "products"
+  | "packages"
+  | "other_income"
+  | "expenses"
+  | "suppliers"
+  | "salaries"
+  | "other_expense";
+
+export interface FinancialEntry {
+  id: string;
+  tenantId: string;
+  type: FinancialEntryType;
+  category: FinancialCategory;
+  description: string;
+  amount: number;
+  date: string; // YYYY-MM-DD
+  sourceId?: string;
+  sourceType?: "appointment" | "product" | "package" | "supplier" | "employee" | "other";
+  createdAt: TimestampLike;
+}
+
+// ---------- FASE 2: PROMOÇÕES ----------
+
+export type PromotionType = "first_visit" | "off_peak" | "combo" | "service";
+
+export interface Promotion {
+  id: string;
+  tenantId: string;
+  name: string;
+  type: PromotionType;
+  discountType: "percent" | "fixed";
+  discountValue: number;
+  active: boolean;
+  serviceId?: string;
+  comboServiceIds?: string[];
+  offPeakDays?: DayOfWeek[];
+  offPeakStartTime?: string;
+  offPeakEndTime?: string;
+  validFrom?: string;
+  validUntil?: string;
+  createdAt: TimestampLike;
+  updatedAt: TimestampLike;
+}
+
 export type TimestampLike = Date | {
   seconds?: number;
   nanoseconds?: number;

@@ -23,6 +23,13 @@ export function tenantCollections(db: Firestore, tenantId: string) {
     notifications: () => collection(db, "tenants", tenantId, "notifications"),
     audit: () => collection(db, "tenants", tenantId, "audit"),
     holidays: () => collection(db, "tenants", tenantId, "holidays"),
+    subscriptions: () => collection(db, "tenants", tenantId, "subscriptions"),
+    webhookEvents: () => collection(db, "tenants", tenantId, "webhook_events"),
+    loyaltyRewards: () => collection(db, "tenants", tenantId, "loyalty_rewards"),
+    loyaltyAccounts: () => collection(db, "tenants", tenantId, "loyalty_accounts"),
+    loyaltyTransactions: () => collection(db, "tenants", tenantId, "loyalty_transactions"),
+    financial: () => collection(db, "tenants", tenantId, "financial"),
+    promotions: () => collection(db, "tenants", tenantId, "promotions"),
   };
 }
 

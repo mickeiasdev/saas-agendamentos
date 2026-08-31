@@ -6,6 +6,7 @@ import {
   createPublicAppointment,
   listPublicSlots,
 } from "./server";
+import { getPlan } from "@/lib/plans";
 
 const MONDAY = "2030-01-14";
 
@@ -13,7 +14,7 @@ interface SeedOptions {
   tenantId?: string;
   slug?: string;
   status?: "active" | "suspended";
-  planId?: "FREE" | "BASIC" | "PRO" | "PREMIUM";
+  planId?: "ALL";
   servicePrice?: number;
   serviceDuration?: number;
   leadTime?: number;
@@ -33,7 +34,7 @@ function seedTenant(db: FakeDb, opts: SeedOptions = {}): { tenantId: string; ser
     slug,
     name: "Empresa Teste",
     status: opts.status ?? "active",
-    planId: opts.planId ?? "FREE",
+    planId: opts.planId ?? "ALL",
     ownerUserId: "owner1",
     settings: {
       timezone: "America/Sao_Paulo",
@@ -263,24 +264,25 @@ describe("cupons no fluxo de agendamento", () => {
 });
 
 describe("planos e limites", () => {
-  it("recusa agendamento quando o limite mensal do plano é atingido", async () => {
+  it("não bloqueia agendamento mesmo com muitos agendamentos no mês (plano único sem limites)", async () => {
     const db = new FakeFirestore();
-    seedTenant(db, { planId: "FREE", appointmentsInMonth: 500 });
-    await expect(createBooking(db)).rejects.toThrow("Limite do plano atingido");
-  });
-
-  it("permite agendamento abaixo do limite", async () => {
-    const db = new FakeFirestore();
-    seedTenant(db, { planId: "FREE", appointmentsInMonth: 499 });
+    seedTenant(db, { planId: "ALL", appointmentsInMonth: 5000 });
     const result = await createBooking(db);
     expect(result.appointmentId).toBeTruthy();
   });
 
-  it("limites maiores (PRO) liberam mais agendamentos mensais", async () => {
+  it("permite agendamento normalmente no plano único", async () => {
     const db = new FakeFirestore();
-    seedTenant(db, { planId: "PRO", appointmentsInMonth: 600 });
+    seedTenant(db, { planId: "ALL", appointmentsInMonth: 499 });
     const result = await createBooking(db);
     expect(result.appointmentId).toBeTruthy();
+  });
+
+  it("mantém a arquitetura de limites preparada, mas não aplicada (ilimitado)", async () => {
+    const plan = getPlan("ALL");
+    expect(plan.limits.maxAppointmentsPerMonth).toBe(-1);
+    expect(plan.limits.maxProfessionals).toBe(-1);
+    expect(plan.limits.maxCustomers).toBe(-1);
   });
 });
 

@@ -10,48 +10,34 @@ import {
 import type { PlanId } from "@/types";
 
 describe("planos", () => {
-  it("expõe os quatro planos na ordem FREE -> PREMIUM", () => {
-    expect(PLAN_ORDER).toEqual(["FREE", "BASIC", "PRO", "PREMIUM"]);
+  it("expõe o plano único ALL (sem plano gratuito nem segmentação)", () => {
+    expect(PLAN_ORDER).toEqual(["ALL"]);
+    expect(Object.keys(PLANS)).toEqual(["ALL"]);
   });
 
-  it("retorna FREE como padrão para planos desconhecidos", () => {
-    expect(getPlan("NENHUM" as PlanId).id).toBe("FREE");
+  it("retorna ALL como padrão para planos desconhecidos", () => {
+    expect(getPlan("NENHUM" as PlanId).id).toBe("ALL");
   });
 
-  it("FREE tem os menores limites", () => {
-    const limits = getPlanLimits("FREE");
-    expect(limits.maxProfessionals).toBe(3);
-    expect(limits.maxCustomers).toBe(200);
-    expect(limits.maxAppointmentsPerMonth).toBe(500);
-    expect(limits.maxBranches).toBe(1);
+  it("o plano único não aplica limites (tudo ilimitado)", () => {
+    const limits = getPlanLimits("ALL");
+    expect(limits.maxProfessionals).toBe(-1);
+    expect(limits.maxCustomers).toBe(-1);
+    expect(limits.maxAppointmentsPerMonth).toBe(-1);
+    expect(limits.maxStorageGb).toBe(-1);
+    expect(limits.maxBranches).toBe(-1);
   });
 
-  it("PREMIUM tem os maiores limites", () => {
-    const limits = getPlanLimits("PREMIUM");
-    expect(limits.maxProfessionals).toBe(100);
-    expect(limits.maxAppointmentsPerMonth).toBe(100000);
-    expect(limits.maxBranches).toBe(10);
-  });
-
-  it("limites crescem de forma não decrescente entre planos", () => {
-    const keys = ["maxProfessionals", "maxCustomers", "maxAppointmentsPerMonth", "maxStorageGb", "maxBranches"] as const;
-    for (const key of keys) {
-      for (let i = 1; i < PLAN_ORDER.length; i++) {
-        const prev = getPlanLimits(PLAN_ORDER[i - 1])[key];
-        const cur = getPlanLimits(PLAN_ORDER[i])[key];
-        expect(cur, `${key} deve crescer de ${PLAN_ORDER[i - 1]} para ${PLAN_ORDER[i]}`).toBeGreaterThanOrEqual(prev);
-      }
-    }
-  });
-
-  it("feature flags ativam conforme o plano (payments, whatsapp, reports)", () => {
-    expect(getFeatureFlags("FREE").payments).toBe(false);
-    expect(getFeatureFlags("BASIC").payments).toBe(true);
-    expect(getFeatureFlags("BASIC").whatsapp).toBe(false);
-    expect(getFeatureFlags("PRO").whatsapp).toBe(true);
-    expect(getFeatureFlags("PRO").reports).toBe(true);
-    expect(getFeatureFlags("PREMIUM").inventory).toBe(true);
-    expect(getFeatureFlags("PREMIUM").api).toBe(true);
+  it("todas as feature flags estão habilitadas no plano único", () => {
+    const flags = getFeatureFlags("ALL");
+    expect(flags.payments).toBe(true);
+    expect(flags.whatsapp).toBe(true);
+    expect(flags.customDomain).toBe(true);
+    expect(flags.reports).toBe(true);
+    expect(flags.loyalty).toBe(true);
+    expect(flags.inventory).toBe(true);
+    expect(flags.multiBranch).toBe(true);
+    expect(flags.api).toBe(true);
   });
 });
 
@@ -86,7 +72,7 @@ describe("PLANS exportado", () => {
       const plan = PLANS[id];
       expect(plan.id).toBe(id);
       expect(plan.name.length).toBeGreaterThan(0);
-      expect(plan.limits.maxProfessionals).toBeGreaterThan(0);
+      expect(plan.limits.maxProfessionals).toBe(-1);
       expect(typeof plan.features.payments).toBe("boolean");
     }
   });
