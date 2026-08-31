@@ -368,3 +368,57 @@ export async function createPublicAppointment(
 
   return { appointmentId: slotId, customerId, price: finalPrice, couponApplied };
 }
+
+export interface CancelBookingInput {
+  tenantSlug: string;
+  appointmentId: string;
+  reason?: string;
+}
+
+/**
+ * Cancelamento de agendamento pelo site público.
+ *
+ * O documento é buscado dentro da subcoleção do tenant correspondente ao slug:
+ * um agendamento do Tenant A nunca é localizável pelo slug do Tenant B
+ * (isolamento multi-tenant no backend).
+ */
+export async function cancelPublicAppointment(
+  db: Firestore,
+  input: CancelBookingInput
+): Promise<{ ok: boolean }> {
+  const tenantSnap = await db.collection("tenants").where("slug", "==", input.tenantSlug).limit(1).get();
+  if (tenantSnap.empty) throw new BookingError("Empresa não encontrada.");
+  const tenantId = tenantSnap.docs[0].id;
+  const tenant = { id: tenantId, ...tenantSnap.docs[0].data() } as TenantWithId;
+
+  const ref = db.collection("tenants").doc(tenantId).collection("appointments").doc(input.appointmentId);
+  const snap = await ref.get();
+  if (!snap.exists) throw new BookingError("Agendamento não encontrado.");
+
+  const appointment = snap.data() as Appointment;
+  if (appointment.status === "cancelled") {
+    throw new BookingError("Este agendamento já foi cancelado.");
+  }
+  if (appointment.status === "completed" || appointment.status === "no_show") {
+    throw new BookingError("Este agendamento não pode mais ser cancelado.");
+  }
+
+  const cancelWindow = tenant.settings?.bookingCancelWindowMinutes ?? 0;
+  if (cancelWindow > 0) {
+    const start = toDateValue(appointment.startAt);
+    const deadline = new Date(start.getTime() - cancelWindow * 60000);
+    if (Date.now() > deadline.getTime()) {
+      throw new BookingError(
+        `O cancelamento deve ser feito com pelo menos ${cancelWindow} minuto(s) de antecedência.`
+      );
+    }
+  }
+
+  await ref.update({
+    status: "cancelled",
+    cancellationReason: input.reason?.trim() || "cancelado pelo cliente",
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+
+  return { ok: true };
+}

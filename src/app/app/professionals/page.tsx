@@ -18,6 +18,7 @@ const COLORS = ["#6366f1", "#0ea5e9", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"
 
 const EMPTY_FORM: CreateProfessionalInput = {
   name: "",
+  photoUrl: "",
   description: "",
   phone: "",
   email: "",
@@ -62,6 +63,7 @@ export default function ProfessionalsPage() {
     setEditing(p);
     setForm({
       name: p.name,
+      photoUrl: p.photoUrl ?? "",
       description: p.description ?? "",
       phone: p.phone ?? "",
       email: p.email ?? "",
@@ -137,12 +139,22 @@ export default function ProfessionalsPage() {
           {professionals.map((p) => (
             <div key={p.id} className="card">
               <div className="flex items-center gap-3">
-                <span
-                  className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold text-white"
-                  style={{ backgroundColor: p.color }}
-                >
-                  {p.name.charAt(0).toUpperCase()}
-                </span>
+                {p.photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={p.photoUrl}
+                    alt={p.name}
+                    className="h-11 w-11 rounded-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <span
+                    className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold text-white"
+                    style={{ backgroundColor: p.color }}
+                  >
+                    {p.name.charAt(0).toUpperCase()}
+                  </span>
+                )}
                 <div className="min-w-0">
                   <div className="truncate font-semibold text-slate-900">{p.name}</div>
                   <div className="text-xs text-slate-500">{p.serviceIds.length} serviços vinculados</div>
@@ -203,6 +215,37 @@ export default function ProfessionalsPage() {
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
             />
+          </div>
+          <div>
+            <label className="label">URL da foto</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="url"
+                className="input flex-1"
+                value={form.photoUrl}
+                onChange={(e) => setForm({ ...form, photoUrl: e.target.value })}
+                placeholder="https://.../foto.jpg"
+              />
+              {form.photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={form.photoUrl}
+                  alt="Prévia"
+                  className="h-12 w-12 rounded-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <span
+                  className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-bold text-white"
+                  style={{ backgroundColor: form.color }}
+                >
+                  {form.name.charAt(0).toUpperCase() || "?"}
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-slate-400">
+              Cole a URL de uma foto (hospedada em Firebase Storage ou outro serviço).
+            </p>
           </div>
           <div>
             <label className="label">Cor</label>

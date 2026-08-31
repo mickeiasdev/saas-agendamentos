@@ -18,6 +18,39 @@ export default function AvailabilityPage() {
   const [saved, setSaved] = useState(false);
   const [daysOff, setDaysOff] = useState("");
   const [blockedDates, setBlockedDates] = useState("");
+  const [excDate, setExcDate] = useState("");
+  const [excStart, setExcStart] = useState("");
+  const [excEnd, setExcEnd] = useState("");
+  const [excReason, setExcReason] = useState("");
+
+  function addException(e: React.FormEvent) {
+    e.preventDefault();
+    if (!activeTenantId) return;
+    const date = excDate.trim();
+    if (!date) return;
+    setAvailability((prev) =>
+      prev
+        ? {
+            ...prev,
+            exceptions: [
+              ...prev.exceptions,
+              {
+                id: `exc${Date.now()}`,
+                tenantId: activeTenantId,
+                date,
+                startTime: excStart || undefined,
+                endTime: excEnd || undefined,
+                reason: excReason.trim() || "Exceção de expediente",
+              },
+            ],
+          }
+        : prev
+    );
+    setExcDate("");
+    setExcStart("");
+    setExcEnd("");
+    setExcReason("");
+  }
 
   const load = useCallback(async () => {
     if (!activeTenantId) return;
@@ -98,7 +131,7 @@ export default function AvailabilityPage() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Disponibilidade</h1>
         <p className="text-sm text-slate-500">
-          Defina expediente, intervalos, folgas, férias e bloqueios por profissional.
+          Defina expediente, intervalos, folgas, férias, bloqueios e exceções por profissional.
         </p>
       </div>
 
@@ -238,6 +271,91 @@ export default function AvailabilityPage() {
                 </button>
               </div>
             </div>
+          </div>
+
+          <div className="card">
+            <h2 className="mb-2 font-semibold text-slate-900">Exceções de expediente</h2>
+            <p className="mb-3 text-xs text-slate-500">
+              Horário especial para uma data específica (ex.: feriado com atendimento, ou
+              alteração pontual). Deixe os horários em branco para indicar que o profissional
+              não atende nessa data.
+            </p>
+            {availability.exceptions.length === 0 ? (
+              <p className="mb-3 text-sm text-slate-500">Nenhuma exceção cadastrada.</p>
+            ) : (
+              <ul className="mb-3 divide-y divide-slate-100">
+                {availability.exceptions.map((exc) => (
+                  <li key={exc.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                    <div>
+                      <span className="font-medium text-slate-900">{exc.date}</span>
+                      <span className="ml-2 text-slate-600">
+                        {exc.startTime && exc.endTime
+                          ? `${exc.startTime} às ${exc.endTime}`
+                          : "Fechado"}
+                      </span>
+                      <span className="ml-2 text-xs text-slate-400">{exc.reason}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAvailability((prev) =>
+                          prev
+                            ? { ...prev, exceptions: prev.exceptions.filter((x) => x.id !== exc.id) }
+                            : prev
+                        )
+                      }
+                      className="text-sm text-red-600 hover:underline"
+                    >
+                      Remover
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <form onSubmit={addException} className="grid gap-3 rounded-lg border border-slate-200 p-3 sm:grid-cols-4">
+              <div>
+                <label className="label">Data *</label>
+                <input
+                  required
+                  type="date"
+                  className="input"
+                  value={excDate}
+                  onChange={(e) => setExcDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="label">Início</label>
+                <input
+                  type="time"
+                  className="input"
+                  value={excStart}
+                  onChange={(e) => setExcStart(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="label">Fim</label>
+                <input
+                  type="time"
+                  className="input"
+                  value={excEnd}
+                  onChange={(e) => setExcEnd(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="label">Motivo</label>
+                <input
+                  className="input"
+                  value={excReason}
+                  onChange={(e) => setExcReason(e.target.value)}
+                  placeholder="Ex.: feriado municipal"
+                />
+              </div>
+              <div className="sm:col-span-4">
+                <button type="submit" className="btn-secondary text-sm">
+                  Adicionar exceção
+                </button>
+              </div>
+            </form>
           </div>
 
           <div className="flex items-center gap-4">

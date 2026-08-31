@@ -19,6 +19,7 @@ import type { Professional, Service } from "@/types";
 const EMPTY_FORM: CreateServiceInput = {
   name: "",
   description: "",
+  imageUrl: "",
   price: 0,
   durationMinutes: 30,
   categoryId: "",
@@ -68,6 +69,7 @@ export default function ServicesPage() {
     setForm({
       name: s.name,
       description: s.description ?? "",
+      imageUrl: s.imageUrl ?? "",
       price: s.price,
       durationMinutes: s.durationMinutes,
       categoryId: s.categoryId ?? "",
@@ -154,7 +156,25 @@ export default function ServicesPage() {
             <tbody className="divide-y divide-slate-100">
               {services.map((s) => (
                 <tr key={s.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-medium text-slate-900">{s.name}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      {s.imageUrl && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={s.imageUrl}
+                          alt=""
+                          className="h-10 w-10 rounded-lg object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      )}
+                      <div className="min-w-0">
+                        <div className="truncate font-medium text-slate-900">{s.name}</div>
+                        {s.description && (
+                          <div className="max-w-[240px] truncate text-xs text-slate-500">{s.description}</div>
+                        )}
+                      </div>
+                    </div>
+                  </td>
                   <td className="px-4 py-3 text-slate-600">
                     {categories.find((c) => c.id === s.categoryId)?.name ?? "-"}
                   </td>
@@ -213,6 +233,30 @@ export default function ServicesPage() {
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
             />
+          </div>
+          <div>
+            <label className="label">URL da imagem</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="url"
+                className="input flex-1"
+                value={form.imageUrl}
+                onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+                placeholder="https://.../servico.jpg"
+              />
+              {form.imageUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={form.imageUrl}
+                  alt="Prévia"
+                  className="h-12 w-12 rounded-lg object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              )}
+            </div>
+            <p className="mt-1 text-xs text-slate-400">
+              Cole a URL de uma imagem (hospedada em Firebase Storage ou outro serviço).
+            </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
