@@ -50,6 +50,9 @@ export type Permission =
   | "settings.manage"
   | "reports.view"
   | "coupon.manage"
+  | "promotion.manage"
+  | "loyalty.manage"
+  | "financial.manage"
   | "review.manage"
   | "notification.view"
   | "master.view"
@@ -69,6 +72,9 @@ const MIN_ROLE: Record<Permission, Role> = {
   "settings.manage": "TENANT_OWNER",
   "reports.view": "TENANT_ADMIN",
   "coupon.manage": "TENANT_ADMIN",
+  "promotion.manage": "TENANT_ADMIN",
+  "loyalty.manage": "TENANT_ADMIN",
+  "financial.manage": "TENANT_ADMIN",
   "review.manage": "TENANT_ADMIN",
   "notification.view": "PROFESSIONAL",
   "master.view": "PLATFORM_ADMIN",

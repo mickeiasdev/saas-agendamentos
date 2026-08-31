@@ -5,7 +5,8 @@ import { useTenant } from "@/lib/tenant/TenantContext";
 import { listAppointments } from "@/lib/repository/appointments";
 import { listProfessionals } from "@/lib/repository/professionals";
 import { listServices } from "@/lib/repository/services";
-import { formatBRL, toDate } from "@/lib/utils/format";
+import { commissionsByProfessional } from "@/lib/commissions";
+import { formatBRL } from "@/lib/utils/format";
 import type { Appointment, Professional, Service } from "@/types";
 
 type Period = "7d" | "month" | "lastMonth" | "all";
@@ -95,6 +96,9 @@ export default function ReportsPage() {
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 8);
 
+  const commissionRows = commissionsByProfessional(appointments, professionals, services);
+  const totalCommission = commissionRows.reduce((sum, r) => sum + r.commission, 0);
+
   if (loading) return <p className="text-slate-500">Carregando...</p>;
 
   return (
@@ -134,6 +138,17 @@ export default function ReportsPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="card">
+          <div className="text-3xl font-bold text-emerald-600">{formatBRL(totalCommission)}</div>
+          <div className="text-sm text-slate-500">Comissões a pagar</div>
+        </div>
+        <div className="card">
+          <div className="text-3xl font-bold text-slate-900">{formatBRL(revenue - totalCommission)}</div>
+          <div className="text-sm text-slate-500">Faturamento líquido</div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="card">
           <div className="text-2xl font-bold text-blue-600">{byStatus("confirmed")}</div>
           <div className="text-sm text-slate-500">Confirmados</div>
         </div>
@@ -163,16 +178,23 @@ export default function ReportsPage() {
                   <th className="pb-2">Profissional</th>
                   <th className="pb-2">Agendamentos</th>
                   <th className="pb-2 text-right">Faturamento</th>
+                  <th className="pb-2 text-right">Comissão</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {byProfessional.map((p) => (
-                  <tr key={p.name}>
-                    <td className="py-2 font-medium text-slate-900">{p.name}</td>
-                    <td className="py-2 text-slate-600">{p.count}</td>
-                    <td className="py-2 text-right text-slate-900">{formatBRL(p.revenue)}</td>
-                  </tr>
-                ))}
+                {byProfessional.map((p) => {
+                  const row = commissionRows.find((r) => r.professional.name === p.name);
+                  return (
+                    <tr key={p.name}>
+                      <td className="py-2 font-medium text-slate-900">{p.name}</td>
+                      <td className="py-2 text-slate-600">{p.count}</td>
+                      <td className="py-2 text-right text-slate-900">{formatBRL(p.revenue)}</td>
+                      <td className="py-2 text-right text-emerald-600">
+                        {formatBRL(row?.commission ?? 0)}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}

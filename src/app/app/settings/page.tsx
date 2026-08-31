@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { QRCodeCanvas } from "qrcode.react";
 import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { getFirebaseFirestore } from "@/lib/firebase/client";
 import { useTenant } from "@/lib/tenant/TenantContext";
@@ -138,6 +139,33 @@ export default function SettingsPage() {
         <p className="mt-2 text-xs text-slate-500">
           No ambiente de preview local, acesse <code className="rounded bg-slate-100 px-1">/{activeTenant.slug}</code> na aplicação.
         </p>
+        <div className="mt-4 flex flex-wrap items-start gap-4">
+          <div className="rounded-xl border border-slate-200 bg-white p-3">
+            <QRCodeCanvas value={publicUrl} size={160} level="M" includeMargin={false} />
+          </div>
+          <div className="min-w-0 flex-1 text-sm text-slate-600">
+            <p className="font-medium text-slate-900">QR Code da empresa</p>
+            <p className="mt-1">
+              Imprima e exiba no estabelecimento. Os clientes escaneiam e acessam
+              diretamente a página de agendamento da sua empresa.
+            </p>
+            <button
+              type="button"
+              className="btn-secondary mt-3 py-1.5 text-xs"
+              onClick={() => {
+                const a = document.createElement("a");
+                const canvas = document.querySelector("canvas");
+                if (canvas) {
+                  a.href = canvas.toDataURL("image/png");
+                  a.download = `qr-${activeTenant.slug}.png`;
+                  a.click();
+                }
+              }}
+            >
+              Baixar QR Code
+            </button>
+          </div>
+        </div>
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">

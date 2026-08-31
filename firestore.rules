@@ -98,6 +98,35 @@ service cloud.firestore {
         allow write: if isMember() && hasRole(['TENANT_OWNER', 'TENANT_ADMIN']);
       }
 
+      match /promotions/{docId} {
+        allow read: if isMember();
+        allow write: if isMember() && hasRole(['TENANT_OWNER', 'TENANT_ADMIN']);
+      }
+
+      match /loyalty_rewards/{docId} {
+        allow read: if isMember();
+        allow write: if isMember() && hasRole(['TENANT_OWNER', 'TENANT_ADMIN']);
+      }
+
+      match /loyalty_accounts/{docId} {
+        allow read: if isMember();
+        allow create: if isMember();
+        allow update: if isMember() && hasRole(['TENANT_OWNER', 'TENANT_ADMIN']);
+        allow delete: if isMember() && hasRole(['TENANT_OWNER', 'TENANT_ADMIN']);
+      }
+
+      match /loyalty_transactions/{docId} {
+        allow read: if isMember();
+        allow create: if isMember();
+        allow update: if false;
+        allow delete: if false;
+      }
+
+      match /financial/{docId} {
+        allow read: if isMember();
+        allow write: if isMember() && hasRole(['TENANT_OWNER', 'TENANT_ADMIN']);
+      }
+
       match /reviews/{docId} {
         // Avaliações criadas por clientes do site público passam pela API route
         // (Admin SDK), que valida o atendimento e a identidade antes de gravar.

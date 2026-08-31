@@ -50,6 +50,19 @@ describe("can", () => {
     expect(can("TENANT_OWNER", "availability.manage")).toBe(true);
   });
 
+  it("TENANT_ADMIN gerencia cupons, promoções, fidelidade e financeiro", () => {
+    expect(can("TENANT_ADMIN", "coupon.manage")).toBe(true);
+    expect(can("TENANT_ADMIN", "promotion.manage")).toBe(true);
+    expect(can("TENANT_ADMIN", "loyalty.manage")).toBe(true);
+    expect(can("TENANT_ADMIN", "financial.manage")).toBe(true);
+  });
+
+  it("MANAGER não gerencia financeiro, promoções ou fidelidade", () => {
+    expect(can("MANAGER", "financial.manage")).toBe(false);
+    expect(can("MANAGER", "promotion.manage")).toBe(false);
+    expect(can("MANAGER", "loyalty.manage")).toBe(false);
+  });
+
   it("papéis de plataforma têm acesso amplo, exceto master.manage", () => {
     expect(can("PLATFORM_ADMIN", "master.view")).toBe(true);
     expect(can("PLATFORM_ADMIN", "master.manage")).toBe(false);
