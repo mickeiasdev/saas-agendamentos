@@ -6,7 +6,9 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useTenant } from "@/lib/tenant/TenantContext";
 import { can, type Permission, ROLE_NAMES } from "@/lib/rbac/roles";
-import FirebaseSetupGuide from "@/components/FirebaseSetupGuide";import { cn } from "@/lib/utils/format";
+import FirebaseSetupGuide from "@/components/FirebaseSetupGuide";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { cn } from "@/lib/utils/format";
 
 interface NavItem {
   href: string;
@@ -23,6 +25,9 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/app/categories", label: "Categorias", permission: "category.manage" },
   { href: "/app/professionals", label: "Profissionais", permission: "professional.manage" },
   { href: "/app/availability", label: "Disponibilidade", permission: "availability.manage" },
+  { href: "/app/coupons", label: "Cupons", permission: "coupon.manage" },
+  { href: "/app/reviews", label: "Avaliações", permission: "review.manage" },
+  { href: "/app/reports", label: "Relatórios", permission: "reports.view" },
   { href: "/app/settings", label: "Configurações", permission: "settings.manage" },
   { href: "/app/master", label: "Painel Master", permission: "master.view" },
 ];
@@ -77,9 +82,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         {activeTenant && (
-          <div className="border-b border-slate-200 px-4 py-3">
+          <div className="flex items-center gap-2 border-b border-slate-200 px-4 py-3">
             <select
-              className="input py-1.5 text-sm"
+              className="input flex-1 py-1.5 text-sm"
               value={activeTenantId ?? ""}
               onChange={(e) => switchTenant(e.target.value)}
             >
@@ -89,6 +94,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 </option>
               ))}
             </select>
+            <NotificationBell />
           </div>
         )}
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
@@ -138,15 +144,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </button>
             <span className="font-bold text-slate-900">Agenda SaaS</span>
           </div>
-          <button
-            onClick={async () => {
-              await logout();
-              router.replace("/");
-            }}
-            className="text-sm text-slate-500"
-          >
-            Sair
-          </button>
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <button
+              onClick={async () => {
+                await logout();
+                router.replace("/");
+              }}
+              className="text-sm text-slate-500"
+            >
+              Sair
+            </button>
+          </div>
         </header>
 
         {menuOpen && (

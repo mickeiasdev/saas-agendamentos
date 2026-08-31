@@ -3,29 +3,23 @@
 import { use, useEffect, useMemo, useState } from "react";
 import {
   collection,
-  doc,
-  getDoc,
   getDocs,
   limit,
   query,
   where,
 } from "firebase/firestore";
 import { getFirebaseFirestore } from "@/lib/firebase/client";
-import { generateSlots, type SlotGenerationOptions } from "@/lib/availability/engine";
-import { createAppointment } from "@/lib/repository/appointments";
-import { upsertCustomer } from "@/lib/repository/customers";
-import { formatBRL, timeToMinutes } from "@/lib/utils/format";
-import type {
-  Appointment,
-  Holiday,
-  Professional,
-  ProfessionalAvailability,
-  Service,
-  Slot,
-  Tenant,
-} from "@/types";
+import { formatBRL } from "@/lib/utils/format";
+import type { Professional, Service, Tenant } from "@/types";
 
 type Step = "service" | "professional" | "datetime" | "customer" | "done";
+
+interface BookResponse {
+  ok?: boolean;
+  appointmentId?: string;
+  price?: number;
+  error?: string;
+}
 
 export default function BookingPage({
   params,
@@ -42,14 +36,15 @@ export default function BookingPage({
   const [service, setService] = useState<Service | null>(null);
   const [professional, setProfessional] = useState<Professional | null>(null);
   const [date, setDate] = useState("");
-  const [slots, setSlots] = useState<Slot[]>([]);
-  const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
+  const [availableTimes, setAvailableTimes] = useState<string[]>([]);
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
-  const [form, setForm] = useState({ name: "", phone: "", email: "" });
+  const [form, setForm] = useState({ name: "", phone: "", email: "", coupon: "" });
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
   const [appointmentId, setAppointmentId] = useState("");
+  const [confirmedPrice, setConfirmedPrice] = useState<number | null>(null);
 
   useEffect(() => {
     const db = getFirebaseFirestore();
@@ -82,76 +77,59 @@ export default function BookingPage({
   useEffect(() => {
     if (!date || !professional || !service || !tenant) return;
     setLoadingSlots(true);
-    setSelectedSlot(null);
+    setSelectedTime(null);
+    setError("");
 
-    const db = getFirebaseFirestore();
-    void (async () => {
-      try {
-        const availSnap = await getDocs(
-          query(
-            collection(db, "tenants", tenant.id, "availability"),
-            where("professionalId", "==", professional.id)
-          )
-        );
-        const availability = availSnap.empty
-          ? null
-          : ({ id: availSnap.docs[0].id, ...availSnap.docs[0].data() } as ProfessionalAvailability);
+    const params = new URLSearchParams({
+      tenant: tenant.slug,
+      serviceId: service.id,
+      professionalId: professional.id,
+      date,
+    });
 
-        const holSnap = await getDocs(collection(db, "tenants", tenant.id, "holidays"));
-        const holidays = holSnap.docs.map((d) => d.data()) as Holiday[];
-
-        const start = new Date(`${date}T00:00:00`);
-        const end = new Date(`${date}T23:59:59`);
-        const appSnap = await getDocs(
-          query(
-            collection(db, "tenants", tenant.id, "appointments"),
-            where("startAt", ">=", start),
-            where("startAt", "<=", end)
-          )
-        );
-        const appointments = appSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as Appointment);
-
-        const opts: SlotGenerationOptions = {
-          availability,
-          serviceDurationMinutes: service.durationMinutes,
-          appointments,
-          holidays,
-          slotIntervalMinutes: tenant.settings.slotIntervalMinutes,
-          date,
-        };
-        setSlots(generateSlots(opts));
-      } catch (err) {
+    void fetch(`/api/public/slots?${params.toString()}`)
+      .then(async (res) => {
+        const data = (await res.json()) as { slots?: string[]; error?: string };
+        if (!res.ok) throw new Error(data.error ?? "Não foi possível consultar os horários.");
+        setAvailableTimes(data.slots ?? []);
+      })
+      .catch((err) => {
         setError((err as Error).message);
-        setSlots([]);
-      } finally {
-        setLoadingSlots(false);
-      }
-    })();
+        setAvailableTimes([]);
+      })
+      .finally(() => setLoadingSlots(false));
   }, [date, professional, service, tenant]);
 
   async function handleConfirm(e: React.FormEvent) {
     e.preventDefault();
-    if (!tenant || !service || !professional || !selectedSlot) return;
+    if (!tenant || !service || !professional || !selectedTime) return;
     setError("");
     setCreating(true);
     try {
-      const db = getFirebaseFirestore();
-      const customerId = await upsertCustomer(tenant.id, undefined, {
-        name: form.name,
-        phone: form.phone || undefined,
-        email: form.email || undefined,
+      const res = await fetch("/api/public/book", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tenantSlug: tenant.slug,
+          serviceId: service.id,
+          professionalId: professional.id,
+          date,
+          time: selectedTime,
+          couponCode: form.coupon || undefined,
+          notes: undefined,
+          customer: {
+            name: form.name,
+            phone: form.phone || undefined,
+            email: form.email || undefined,
+          },
+        }),
       });
-      const id = await createAppointment({
-        tenantId: tenant.id,
-        professionalId: professional.id,
-        serviceId: service.id,
-        customerId,
-        startAt: selectedSlot.start,
-        endAt: selectedSlot.end,
-        price: service.price,
-        createdBy: "customer",
-      });
-      setAppointmentId(id);
+      const data = (await res.json()) as BookResponse;
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error ?? "Não foi possível confirmar o agendamento.");
+      }
+      setAppointmentId(data.appointmentId ?? "");
+      setConfirmedPrice(data.price ?? service.price);
       setStep("done");
     } catch (err) {
       setError((err as Error).message ?? "Não foi possível confirmar o agendamento.");
@@ -176,7 +154,9 @@ export default function BookingPage({
   }
 
   const primary = tenant.branding.primaryColor ?? "#4f46e5";
-  const availableSlots = slots.filter((s) => s.available);
+  const dateLabel = date
+    ? new Date(`${date}T00:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })
+    : "";
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -308,28 +288,25 @@ export default function BookingPage({
                 <label className="label">Horários disponíveis</label>
                 {loadingSlots ? (
                   <p className="text-slate-500">Calculando horários...</p>
-                ) : availableSlots.length === 0 ? (
+                ) : availableTimes.length === 0 ? (
                   <p className="text-sm text-slate-500">
                     Nenhum horário disponível nesta data. Escolha outra data.
                   </p>
                 ) : (
                   <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
-                    {availableSlots.map((slot, i) => (
+                    {availableTimes.map((time) => (
                       <button
-                        key={i}
+                        key={time}
                         type="button"
-                        onClick={() => setSelectedSlot(slot)}
+                        onClick={() => setSelectedTime(time)}
                         className="rounded-lg border px-2 py-2 text-sm font-medium"
                         style={{
-                          backgroundColor: selectedSlot === slot ? primary : "#fff",
-                          color: selectedSlot === slot ? "#fff" : "#334155",
-                          borderColor: selectedSlot === slot ? primary : "#e2e8f0",
+                          backgroundColor: selectedTime === time ? primary : "#fff",
+                          color: selectedTime === time ? "#fff" : "#334155",
+                          borderColor: selectedTime === time ? primary : "#e2e8f0",
                         }}
                       >
-                        {slot.start.toLocaleTimeString("pt-BR", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {time}
                       </button>
                     ))}
                   </div>
@@ -339,7 +316,7 @@ export default function BookingPage({
 
             <button
               className="btn-primary w-full"
-              disabled={!selectedSlot}
+              disabled={!selectedTime}
               onClick={() => setStep("customer")}
             >
               Continuar
@@ -351,9 +328,7 @@ export default function BookingPage({
           <form onSubmit={handleConfirm} className="space-y-4">
             <h1 className="text-2xl font-bold text-slate-900">Seus dados</h1>
             <div className="rounded-lg bg-slate-100 p-3 text-sm text-slate-700">
-              {service?.name} com {professional?.name} em{" "}
-              {selectedSlot?.start.toLocaleDateString("pt-BR")} às{" "}
-              {selectedSlot?.start.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+              {service?.name} com {professional?.name} em {dateLabel} às {selectedTime}
             </div>
             <div>
               <label className="label">Nome completo *</label>
@@ -385,16 +360,25 @@ export default function BookingPage({
                 />
               </div>
             </div>
+            <div>
+              <label className="label">Cupom de desconto</label>
+              <input
+                className="input"
+                placeholder="Opcional — ex.: BEMVINDO10"
+                value={form.coupon}
+                onChange={(e) => setForm({ ...form, coupon: e.target.value })}
+              />
+            </div>
             <p className="rounded-lg bg-slate-50 p-2 text-xs text-slate-500">
-              O horário é validado novamente na confirmação. Se alguém reservar ao mesmo tempo,
-              o sistema recusa e você escolhe outro horário.
+              O horário é validado novamente no servidor na confirmação. Se alguém reservar ao
+              mesmo tempo, o sistema recusa e você escolhe outro horário.
             </p>
             <div className="flex gap-3">
               <button type="button" className="btn-secondary" onClick={() => setStep("datetime")}>
                 Voltar
               </button>
               <button type="submit" className="btn-primary flex-1" disabled={creating}>
-                {creating ? "Confirmando..." : `Confirmar agendamento`}
+                {creating ? "Confirmando..." : "Confirmar agendamento"}
               </button>
             </div>
           </form>
@@ -410,10 +394,13 @@ export default function BookingPage({
             </div>
             <h1 className="mt-4 text-2xl font-bold text-slate-900">Agendamento confirmado!</h1>
             <p className="mt-2 text-sm text-slate-600">
-              {service?.name} com {professional?.name} em{" "}
-              {selectedSlot?.start.toLocaleDateString("pt-BR")} às{" "}
-              {selectedSlot?.start.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+              {service?.name} com {professional?.name} em {dateLabel} às {selectedTime}
             </p>
+            {confirmedPrice !== null && confirmedPrice !== service?.price && (
+              <p className="mt-1 text-sm font-semibold text-green-600">
+                Valor com desconto: {formatBRL(confirmedPrice)}
+              </p>
+            )}
             <p className="mt-1 text-xs text-slate-400">Código: {appointmentId.slice(0, 8).toUpperCase()}</p>
             <div className="mt-6">
               <a href={`/${slug}`} className="btn-secondary">

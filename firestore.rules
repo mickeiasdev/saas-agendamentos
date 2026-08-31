@@ -51,12 +51,15 @@ service cloud.firestore {
       }
 
       match /services/{docId} {
-        allow read: if isMember();
+        // Catálogo público: o site público do tenant exibe os serviços sem login.
+        // Escrita apenas por membros autorizados.
+        allow read: if true;
         allow write: if isMember() && hasRole(['TENANT_OWNER', 'TENANT_ADMIN', 'MANAGER']);
       }
 
       match /professionals/{docId} {
-        allow read: if isMember();
+        // Catálogo público: site público exibe profissionais sem login.
+        allow read: if true;
         allow write: if isMember() && hasRole(['TENANT_OWNER', 'TENANT_ADMIN', 'MANAGER']);
       }
 
@@ -75,10 +78,13 @@ service cloud.firestore {
         allow write: if isMember() && hasRole(['TENANT_OWNER', 'TENANT_ADMIN', 'MANAGER']);
       }
 
+      // Agendamentos: agendamentos do site público são criados pelo backend
+      // (API route com Admin SDK, que valida disponibilidade e double booking).
+      // Clientes não autenticados NÃO escrevem diretamente no Firestore.
+      // Membros do tenant (exceto CUSTOMER) podem criar manualmente.
       match /appointments/{docId} {
         allow read: if isMember();
-        allow create: if isMember()
-          || (request.auth != null && request.resource.data.tenantId == tenantId);
+        allow create: if isMember() && hasRole(['TENANT_OWNER', 'TENANT_ADMIN', 'MANAGER', 'PROFESSIONAL']);
         allow update: if isMember();
         allow delete: if false;
       }
