@@ -1,0 +1,67 @@
+import { describe, expect, it } from "vitest";
+import { can, isAtLeast, roleLevel } from "./roles";
+import type { Role } from "@/types";
+
+const ROLES: Role[] = [
+  "PLATFORM_OWNER",
+  "PLATFORM_ADMIN",
+  "TENANT_OWNER",
+  "TENANT_ADMIN",
+  "MANAGER",
+  "PROFESSIONAL",
+  "CUSTOMER",
+];
+
+describe("roleLevel", () => {
+  it("tem hierarquia estritamente decrescente", () => {
+    const levels = ROLES.map(roleLevel);
+    for (let i = 0; i < levels.length - 1; i++) {
+      expect(levels[i]).toBeGreaterThan(levels[i + 1]);
+    }
+  });
+});
+
+describe("isAtLeast", () => {
+  it("TENANT_ADMIN está acima de MANAGER e abaixo de TENANT_OWNER", () => {
+    expect(isAtLeast("TENANT_ADMIN", "MANAGER")).toBe(true);
+    expect(isAtLeast("TENANT_ADMIN", "TENANT_OWNER")).toBe(false);
+    expect(isAtLeast("TENANT_ADMIN", "TENANT_ADMIN")).toBe(true);
+  });
+});
+
+describe("can", () => {
+  it("CUSTOMER pode criar agendamento, mas não gerenciar serviços", () => {
+    expect(can("CUSTOMER", "appointment.create")).toBe(true);
+    expect(can("CUSTOMER", "service.manage")).toBe(false);
+  });
+
+  it("MANAGER pode gerenciar clientes e agendamentos", () => {
+    expect(can("MANAGER", "customer.manage")).toBe(true);
+    expect(can("MANAGER", "appointment.manage")).toBe(true);
+  });
+
+  it("PROFESSIONAL pode ver clientes mas não gerenciá-los", () => {
+    expect(can("PROFESSIONAL", "customer.view")).toBe(true);
+    expect(can("PROFESSIONAL", "customer.manage")).toBe(false);
+  });
+
+  it("TENANT_OWNER acessa tudo do tenant", () => {
+    expect(can("TENANT_OWNER", "settings.manage")).toBe(true);
+    expect(can("TENANT_OWNER", "availability.manage")).toBe(true);
+  });
+
+  it("papéis de plataforma têm acesso amplo, exceto master.manage", () => {
+    expect(can("PLATFORM_ADMIN", "master.view")).toBe(true);
+    expect(can("PLATFORM_ADMIN", "master.manage")).toBe(false);
+    expect(can("PLATFORM_OWNER", "master.manage")).toBe(true);
+    expect(can("PLATFORM_OWNER", "service.manage")).toBe(true);
+  });
+
+  it("papéis de tenant não acessam o painel master", () => {
+    expect(can("TENANT_OWNER", "master.view")).toBe(false);
+  });
+
+  it("role indefinido não tem permissões", () => {
+    expect(can(undefined, "appointment.create")).toBe(false);
+  });
+});
