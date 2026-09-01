@@ -45,7 +45,15 @@ export function priorityOf(priority: SupportTicketPriority): number {
 export function compareTickets(a: SupportTicket, b: SupportTicket): number {
   const byPriority = priorityOf(b.priority) - priorityOf(a.priority);
   if (byPriority !== 0) return byPriority;
-  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  return toMs(b.createdAt) - toMs(a.createdAt);
+}
+
+function toMs(v: unknown): number {
+  if (v instanceof Date) return v.getTime();
+  if (v && typeof v === "object" && typeof (v as { toDate?: unknown }).toDate === "function") {
+    return (v as { toDate: () => Date }).toDate().getTime();
+  }
+  return new Date(String(v)).getTime();
 }
 
 export function ticketStatusLabel(status: SupportTicketStatus): string {

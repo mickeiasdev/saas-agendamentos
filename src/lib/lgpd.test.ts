@@ -65,12 +65,12 @@ describe("lgpd (Fase 3.19)", () => {
   it("constrói exportações", () => {
     const customer = makeCustomer();
     const exportData = buildCustomerExport(customer, { appointments: 3 });
-    expect(exportData.data.name).toBe("Maria Silva");
+    expect((exportData.data as { name: string }).name).toBe("Maria Silva");
     expect(exportData.appointments).toBe(3);
     expect(exportData.exportedAt).toBeDefined();
 
     const userExport = buildUserExport({ uid: "u1", email: "a@b.com", displayName: "Ana", createdAt: new Date() });
-    expect(userExport.data.email).toBe("a@b.com");
+    expect((userExport.data as { email: string }).email).toBe("a@b.com");
   });
 
   it("gera registro seguro para retenção", () => {

@@ -9,7 +9,7 @@ import {
   selectInactiveCustomers,
   selectTomorrowAppointments,
 } from "./automations";
-import type { Appointment, AutomationRun, Customer } from "@/types";
+import type { Appointment, Automation, AutomationRun, Customer } from "@/types";
 
 function makeCustomer(overrides: Partial<Customer> = {}): Customer {
   const now = new Date("2026-01-10T12:00:00Z");

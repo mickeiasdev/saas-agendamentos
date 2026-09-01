@@ -6,6 +6,7 @@ export const globalCollections = {
   tenants: (db: Firestore) => collection(db, "tenants"),
   tenantUsers: (db: Firestore) => collection(db, "tenant_users"),
   plans: (db: Firestore) => collection(db, "plans"),
+  apiKeys: (db: Firestore) => collection(db, "api_keys"),
 } as const;
 
 /** Coleções subordinadas ao documento do tenant. */

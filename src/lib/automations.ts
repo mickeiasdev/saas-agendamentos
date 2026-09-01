@@ -1,4 +1,4 @@
-import type { Appointment, Automation, AutomationRun, Customer } from "@/types";
+import type { Appointment, Automation, AutomationRun, Customer, TimestampLike } from "@/types";
 
 /**
  * Marketing automático (Fase 3.7).
@@ -8,10 +8,18 @@ import type { Appointment, Automation, AutomationRun, Customer } from "@/types";
  * seleção de alvos e construção de conteúdo.
  */
 
-export function daysSince(date: Date | undefined, now: Date): number | null {
+export function daysSince(date: TimestampLike | null | undefined, now: Date): number | null {
   if (!date) return null;
-  const d = date instanceof Date ? date : date?.toDate?.() ?? new Date(String(date));
+  const d = toDate(date);
   return Math.floor((now.getTime() - d.getTime()) / 86400000);
+}
+
+function toDate(v: TimestampLike): Date {
+  if (v instanceof Date) return v;
+  if (v && typeof v === "object" && typeof (v as { toDate?: unknown }).toDate === "function") {
+    return (v as { toDate: () => Date }).toDate();
+  }
+  return new Date(String(v));
 }
 
 export function isBirthday(date: string | undefined, now: Date): boolean {
@@ -50,7 +58,7 @@ export function selectTomorrowAppointments(
   const target = key(tomorrow);
   return appointments.filter((a) => {
     if (a.status !== "confirmed" && a.status !== "pending") return false;
-    const start = a.startAt instanceof Date ? a.startAt : a.startAt?.toDate?.() ?? new Date(String(a.startAt));
+    const start = toDate(a.startAt);
     return key(start) === target;
   });
 }

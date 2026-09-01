@@ -14,7 +14,7 @@ describe("impersonation (Fase 3.16)", () => {
 
   it("valida motivo", () => {
     expect(isReasonValid("Atendendo chamado #123")).toBe(true);
-    expect(isReasonValid("teste")).toBe(false);
+    expect(isReasonValid("ab")).toBe(false);
   });
 
   it("constrói sessão de impersonação", () => {

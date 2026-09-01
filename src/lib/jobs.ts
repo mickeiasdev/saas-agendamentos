@@ -1,4 +1,4 @@
-import type { Job, JobStatus } from "@/types";
+import type { Job, JobStatus, TimestampLike } from "@/types";
 
 /**
  * Filas/Jobs (Fase 3.23).
@@ -37,7 +37,7 @@ export function buildJob(input: ScheduleJobInput, now = new Date()): Omit<Job, "
 }
 
 export function canRunJob(job: Pick<Job, "status" | "runAt">, now = new Date()): boolean {
-  return job.status === "queued" && now.getTime() >= job.runAt.getTime();
+  return job.status === "queued" && now.getTime() >= toMs(job.runAt);
 }
 
 export interface JobRunResult {
@@ -45,6 +45,14 @@ export interface JobRunResult {
   attempts: number;
   runAt: Date;
   lastError?: string;
+}
+
+function toMs(v: TimestampLike): number {
+  if (v instanceof Date) return v.getTime();
+  if (v && typeof v === "object" && typeof (v as { toDate?: unknown }).toDate === "function") {
+    return (v as { toDate: () => Date }).toDate().getTime();
+  }
+  return new Date(String(v)).getTime();
 }
 
 /**
@@ -60,11 +68,11 @@ export function applyJobResult(
 ): JobRunResult {
   const attempts = job.attempts + 1;
   if (ok) {
-    return { status: "completed", attempts, runAt: job.runAt };
+    return { status: "completed", attempts, runAt: toDate(job.runAt) };
   }
   const remaining = job.maxAttempts - attempts;
   if (remaining <= 0) {
-    return { status: "failed", attempts, runAt: job.runAt, lastError: error };
+    return { status: "failed", attempts, runAt: toDate(job.runAt), lastError: error };
   }
   const delay = Math.min(baseDelayMs * 2 ** attempts, 3600_000);
   return {
@@ -83,4 +91,8 @@ export function jobStatusLabel(status: JobStatus): string {
     failed: "Falhou",
   };
   return labels[status] ?? status;
+}
+
+function toDate(v: TimestampLike): Date {
+  return new Date(toMs(v));
 }

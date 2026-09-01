@@ -1,4 +1,4 @@
-import type { BillingCycle, CustomerSubscription, CustomerSubscriptionPlan } from "@/types";
+import type { BillingCycle, CustomerSubscription, CustomerSubscriptionPlan, TimestampLike } from "@/types";
 
 /**
  * Assinaturas dos clientes (Fase 3.9).
@@ -71,8 +71,7 @@ export function consumeSubscriptionUse(
   return { ok: true, subscription: updated, remaining: sub.appointmentsIncluded - sub.appointmentsUsed - 1 };
 }
 
-/**
- * Renova a assinatura para um novo ciclo a partir de `from`. Se `now` já
+/** Renova a assinatura para um novo ciclo a partir de `from`. Se `now` já
  * ultrapassou o fim do ciclo anterior, o novo ciclo começa agora.
  */
 export function renewSubscription(
@@ -80,7 +79,7 @@ export function renewSubscription(
   from: Date
 ): CustomerSubscription {
   const base = from.getTime() > toMs(sub.cycleEnd) ? from : toDate(sub.cycleEnd);
-  const durationMs = cycleDurationDays(sub.billingCycle ?? "monthly") * 86400000;
+  const durationMs = cycleDurationDays(sub.billingCycle) * 86400000;
   const start = new Date(base.getTime());
   const end = new Date(base.getTime() + durationMs);
   return {
@@ -92,7 +91,7 @@ export function renewSubscription(
   };
 }
 
-function toMs(v: unknown): number {
+function toMs(v: TimestampLike): number {
   if (v instanceof Date) return v.getTime();
   if (v && typeof v === "object" && typeof (v as { toDate?: unknown }).toDate === "function") {
     return (v as { toDate: () => Date }).toDate().getTime();
@@ -100,7 +99,7 @@ function toMs(v: unknown): number {
   return new Date(String(v)).getTime();
 }
 
-function toDate(v: unknown): Date {
+function toDate(v: TimestampLike): Date {
   return new Date(toMs(v));
 }
 

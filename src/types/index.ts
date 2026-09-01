@@ -636,6 +636,7 @@ export interface CustomerSubscription {
   customerId: string;
   customerName: string;
   price: number;
+  billingCycle: BillingCycle;
   appointmentsIncluded: number;
   appointmentsUsed: number;
   cycleStart: TimestampLike;

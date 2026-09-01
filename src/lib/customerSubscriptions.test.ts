@@ -19,6 +19,7 @@ function makeSub(overrides: Partial<CustomerSubscription> = {}): CustomerSubscri
     customerId: "cust-1",
     customerName: "Maria",
     price: 99,
+    billingCycle: "monthly",
     appointmentsIncluded: 4,
     appointmentsUsed: 1,
     cycleStart: now,
@@ -74,14 +75,14 @@ describe("customer subscriptions (Fase 3.9)", () => {
     const renewed = renewSubscription(sub, new Date("2026-02-09T12:00:00Z"));
     expect(renewed.appointmentsUsed).toBe(0);
     expect(renewed.status).toBe("active");
-    expect(renewed.cycleStart.getTime()).toBe(new Date("2026-02-09T12:00:00Z").getTime());
-    expect(renewed.cycleEnd.getTime()).toBe(new Date("2026-03-11T12:00:00Z").getTime());
+    expect((renewed.cycleStart as Date).getTime()).toBe(new Date("2026-02-09T12:00:00Z").getTime());
+    expect((renewed.cycleEnd as Date).getTime()).toBe(new Date("2026-03-11T12:00:00Z").getTime());
   });
 
   it("reinicia ciclo atrasado a partir de agora", () => {
     const sub = makeSub();
     const renewed = renewSubscription(sub, new Date("2026-02-20T12:00:00Z"));
-    expect(renewed.cycleStart.getTime()).toBe(new Date("2026-02-20T12:00:00Z").getTime());
+    expect((renewed.cycleStart as Date).getTime()).toBe(new Date("2026-02-20T12:00:00Z").getTime());
   });
 
   it("deriva status para expirado após o fim do ciclo", () => {

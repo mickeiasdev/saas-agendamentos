@@ -12,7 +12,8 @@ describe("jobs (Fase 3.23)", () => {
       attempts: 0,
       maxAttempts: 3,
     });
-    expect(job.runAt.getTime()).toBe(now.getTime());
+    expect(job.runAt).toBeInstanceOf(Date);
+    expect((job.runAt as Date).getTime()).toBe(now.getTime());
   });
 
   it("rejeita runAt no passado", () => {
