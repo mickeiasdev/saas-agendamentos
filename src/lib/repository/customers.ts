@@ -28,11 +28,12 @@ export interface CustomerPage {
 function matchesSearch(c: Customer, term: string): boolean {
   const t = term.trim().toLowerCase();
   if (!t) return true;
+  const digits = t.replace(/\D/g, "");
   return (
     c.name.toLowerCase().includes(t) ||
     (c.email ?? "").toLowerCase().includes(t) ||
-    (c.phone ?? "").replace(/\D/g, "").includes(t.replace(/\D/g, "")) ||
-    (c.whatsapp ?? "").replace(/\D/g, "").includes(t.replace(/\D/g, ""))
+    (digits.length > 0 && (c.phone ?? "").replace(/\D/g, "").includes(digits)) ||
+    (digits.length > 0 && (c.whatsapp ?? "").replace(/\D/g, "").includes(digits))
   );
 }
 

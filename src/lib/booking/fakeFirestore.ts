@@ -62,10 +62,33 @@ function childDocPaths(store: Map<string, DocData>, collectionPath: string): str
 }
 
 export class FakeDocumentSnapshot {
+  readonly ref: {
+    path: string;
+    update: (data: DocData) => Promise<void>;
+    delete: () => Promise<void>;
+  };
+
   constructor(
-    public id: string,
+    public db: FakeFirestore,
+    public path: string,
     private dataValue: DocData | null
-  ) {}
+  ) {
+    this.ref = {
+      path,
+      update: (data: DocData) => {
+        const current = this.db.store.get(path) ?? {};
+        this.db.store.set(path, this.db.applyUpdate(current, data));
+        return Promise.resolve();
+      },
+      delete: async () => {
+        this.db.store.delete(path);
+      },
+    };
+  }
+
+  get id(): string {
+    return this.path.split("/").pop() ?? "";
+  }
 
   get exists(): boolean {
     return this.dataValue !== null;
@@ -74,6 +97,12 @@ export class FakeDocumentSnapshot {
   data(): DocData {
     if (!this.dataValue) throw new Error("Document doesn't exist");
     return this.dataValue;
+  }
+
+  update(data: DocData): Promise<void> {
+    if (!this.exists) throw new Error("Document doesn't exist");
+    this.db.store.set(this.path, this.db.applyUpdate(this.dataValue!, data));
+    return Promise.resolve();
   }
 }
 
@@ -101,7 +130,7 @@ export class FakeDocumentRef {
 
   async get(): Promise<FakeDocumentSnapshot> {
     const data = this.db.store.get(this.path) ?? null;
-    return new FakeDocumentSnapshot(this.id, data);
+    return new FakeDocumentSnapshot(this.db, this.path, data);
   }
 
   collection(segment: string): FakeCollectionRef {
@@ -144,7 +173,52 @@ export class FakeQuery {
 
   private match(): FakeDocumentSnapshot[] {
     const docs = childDocPaths(this.db.store, this.path).map(
-      (key) => new FakeDocumentSnapshot(key.split("/").pop() ?? "", this.db.store.get(key) ?? {})
+      (key) => new FakeDocumentSnapshot(this.db, key, this.db.store.get(key) ?? {})
+    );
+    const filtered = docs.filter((d) => this.wheres.every((w) => matches(d.data(), w)));
+    return this.limitValue ? filtered.slice(0, this.limitValue) : filtered;
+  }
+
+  async get(): Promise<FakeQuerySnapshot> {
+    return new FakeQuerySnapshot(this.match());
+  }
+
+  count(): { get: () => Promise<{ data: () => { count: number } }> } {
+    return {
+      get: async () => ({ data: () => ({ count: this.match().length }) }),
+    };
+  }
+}
+
+/** Query sobre uma collection group (ex.: todas as subcoleções `api_keys`). */
+export class FakeCollectionGroupQuery {
+  constructor(
+    public db: FakeFirestore,
+    private docPaths: string[],
+    private wheres: WhereClause[] = [],
+    private limitValue?: number
+  ) {}
+
+  where(field: string, op: string, value: unknown): FakeCollectionGroupQuery {
+    return new FakeCollectionGroupQuery(
+      this.db,
+      this.docPaths,
+      [...this.wheres, { field, op, value }],
+      this.limitValue
+    );
+  }
+
+  limit(n: number): FakeCollectionGroupQuery {
+    return new FakeCollectionGroupQuery(this.db, this.docPaths, this.wheres, n);
+  }
+
+  orderBy(): FakeCollectionGroupQuery {
+    return this;
+  }
+
+  private match(): FakeDocumentSnapshot[] {
+    const docs = this.docPaths.map(
+      (key) => new FakeDocumentSnapshot(this.db, key, this.db.store.get(key) ?? {})
     );
     const filtered = docs.filter((d) => this.wheres.every((w) => matches(d.data(), w)));
     return this.limitValue ? filtered.slice(0, this.limitValue) : filtered;
@@ -207,6 +281,19 @@ export class FakeFirestore {
 
   doc(path: string): FakeDocumentRef {
     return new FakeDocumentRef(this, path);
+  }
+
+  /**
+   * Encontra todos os documentos cuja coleção imediata tem o nome informado,
+   * em qualquer caminho (ex.: `tenants/t1/api_keys/xxx`).
+   */
+  collectionGroup(name: string): FakeCollectionGroupQuery {
+    const paths: string[] = [];
+    for (const key of this.store.keys()) {
+      const parts = key.split("/");
+      if (parts.length % 2 === 0 && parts[parts.length - 2] === name) paths.push(key);
+    }
+    return new FakeCollectionGroupQuery(this, paths);
   }
 
   runTransaction(fn: (tx: FakeTransaction) => Promise<unknown> | unknown): Promise<unknown> {
