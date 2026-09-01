@@ -32,7 +32,7 @@ export default function SignupPage() {
     setLoading(true);
     try {
       await register(email, password, name);
-      router.push("/app");
+      router.push("/app?verify=1");
     } catch (err) {
       setError((err as Error).message ?? "Erro ao criar conta.");
     } finally {

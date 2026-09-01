@@ -1,0 +1,72 @@
+rules_version = '2';
+
+// ============================================================
+// REGRAS DE SEGURANÇA DO CLOUD STORAGE
+// Upload e leitura de arquivos de um tenant: apenas membros
+// autenticados e ativos daquele tenant.
+//
+// Pastas públicas de exibição (logo, banner, serviços, fotos
+// de profissionais) permitem leitura anônima para o site
+// público, mas a escrita continua restrita ao tenant.
+// ============================================================
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function tenantUserPath(tenantId) {
+      return /databases/(default)/documents/tenant_users/$(request.auth.uid + '_' + tenantId);
+    }
+
+    function isTenantMember(tenantId) {
+      return isSignedIn()
+        && firestore.exists(tenantUserPath(tenantId))
+        && firestore.get(tenantUserPath(tenantId)).data.status == 'active'
+        && firestore.get(tenantUserPath(tenantId)).data.userId == request.auth.uid;
+    }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function underMaxSize() {
+      return request.resource.size < 5 * 1024 * 1024;
+    }
+
+    function validUpload() {
+      return isImage() && underMaxSize();
+    }
+
+    // Qualquer outro caminho: negado por padrão
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    // Logo da empresa
+    match /tenants/{tenantId}/logo/{fileName} {
+      allow read: if true;
+      allow write: if isTenantMember(tenantId) && validUpload();
+    }
+
+    // Banner da empresa
+    match /tenants/{tenantId}/banner/{fileName} {
+      allow read: if true;
+      allow write: if isTenantMember(tenantId) && validUpload();
+    }
+
+    // Imagem de serviço
+    match /tenants/{tenantId}/services/{fileName} {
+      allow read: if true;
+      allow write: if isTenantMember(tenantId) && validUpload();
+    }
+
+    // Foto de profissional
+    match /tenants/{tenantId}/professionals/{fileName} {
+      allow read: if true;
+      allow write: if isTenantMember(tenantId) && validUpload();
+    }
+  }
+}

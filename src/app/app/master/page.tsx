@@ -6,6 +6,8 @@ import { can } from "@/lib/rbac/roles";
 import { Modal } from "@/components/ui/Modal";
 import type { MasterTenantRow } from "@/app/api/master/tenants/route";
 import type { MasterUserRow } from "@/app/api/master/tenants/[id]/users/route";
+import type { MasterActivityRow } from "@/app/api/master/activity/route";
+import type { PlatformUserRow } from "@/app/api/master/users/route";
 
 interface MasterStats {
   tenants: number | null;
@@ -44,6 +46,8 @@ export default function MasterPage() {
   const [usersOpenFor, setUsersOpenFor] = useState<MasterTenantRow | null>(null);
   const [users, setUsers] = useState<MasterUserRow[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [platformUsers, setPlatformUsers] = useState<PlatformUserRow[]>([]);
+  const [activity, setActivity] = useState<MasterActivityRow[]>([]);
 
   const allowed = can(profile?.platformRole as never, "master.view");
   const isOwner = can(profile?.platformRole as never, "master.manage");
@@ -58,6 +62,19 @@ export default function MasterPage() {
       if (!res.ok) throw new Error(data.error ?? "Erro ao carregar a plataforma.");
       setStats(data.stats);
       setTenants(data.tenants ?? []);
+
+      const [usersRes, activityRes] = await Promise.all([
+        fetch("/api/master/users", { headers: await authHeaders(token) }),
+        fetch("/api/master/activity", { headers: await authHeaders(token) }),
+      ]);
+      if (usersRes.ok) {
+        const usersData = await usersRes.json();
+        setPlatformUsers(usersData.users ?? []);
+      }
+      if (activityRes.ok) {
+        const activityData = await activityRes.json();
+        setActivity(activityData.items ?? []);
+      }
     } catch (err) {
       setError((err as Error).message || "Não foi possível carregar o painel master.");
     }
@@ -291,6 +308,63 @@ export default function MasterPage() {
           </ul>
         )}
       </Modal>
+
+      <div className="card overflow-x-auto p-0">
+        <div className="border-b border-slate-200 px-5 py-3">
+          <h2 className="font-semibold text-slate-900">Usuários da plataforma</h2>
+        </div>
+        {platformUsers.length === 0 ? (
+          <p className="px-5 py-6 text-sm text-slate-500">Nenhum usuário cadastrado.</p>
+        ) : (
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500">
+              <tr>
+                <th className="px-5 py-3">Usuário</th>
+                <th className="px-5 py-3">Papel</th>
+                <th className="px-5 py-3">Empresas</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {platformUsers.map((u) => (
+                <tr key={u.uid} className="hover:bg-slate-50">
+                  <td className="px-5 py-3">
+                    <div className="font-medium text-slate-900">{u.displayName || u.email || u.uid}</div>
+                    <div className="text-xs text-slate-500">{u.email ?? u.uid}</div>
+                  </td>
+                  <td className="px-5 py-3 text-slate-600">{u.platformRole ?? "USER"}</td>
+                  <td className="px-5 py-3 text-slate-600">
+                    {u.memberships.length === 0
+                      ? "-"
+                      : u.memberships.map((m) => `${m.role} (${m.status})`).join(", ")}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <div className="card overflow-x-auto p-0">
+        <div className="border-b border-slate-200 px-5 py-3">
+          <h2 className="font-semibold text-slate-900">Feed de atividade</h2>
+        </div>
+        {activity.length === 0 ? (
+          <p className="px-5 py-6 text-sm text-slate-500">Nenhuma atividade registrada.</p>
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {activity.map((item) => (
+              <li key={item.id} className="px-5 py-3 text-sm">
+                <div className="font-medium text-slate-900">{item.action}</div>
+                <div className="text-xs text-slate-500">
+                  {item.tenantId ? `tenant ${item.tenantId}` : "plataforma"}
+                  {item.entityType ? ` · ${item.entityType}` : ""}
+                  {item.entityId ? ` · ${item.entityId}` : ""}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       <div className="card">
         <h2 className="mb-2 font-semibold text-slate-900">Uso da Plataforma</h2>

@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { getAdminFirestore } from "@/lib/server/firebaseAdmin";
-import { getMockTenant } from "@/lib/server/mockTenant";
 import type { Tenant } from "@/types";
 
 export const dynamic = "force-dynamic";
 
 async function getTenantBySlug(slug: string): Promise<Tenant | null> {
   const db = getAdminFirestore();
-  if (!db) return getMockTenant(slug);
+  if (!db) return null;
   try {
     const snap = await db.collection("tenants").where("slug", "==", slug).limit(1).get();
     if (snap.empty) return null;

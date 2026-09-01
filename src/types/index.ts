@@ -269,6 +269,7 @@ export interface Appointment {
   notes?: string;
   cancellationReason?: string;
   cancelWindowDeadline?: TimestampLike | null;
+  rescheduledTo?: string;
   createdBy: "customer" | "professional" | "manager" | "owner";
   createdAt: TimestampLike;
   updatedAt: TimestampLike;

@@ -6,7 +6,7 @@ import { useTenant } from "@/lib/tenant/TenantContext";
 import { listAppointments } from "@/lib/repository/appointments";
 import { listProfessionals } from "@/lib/repository/professionals";
 import { listServices } from "@/lib/repository/services";
-import { formatBRL, sameDay, toDate } from "@/lib/utils/format";
+import { sameDay, toDate } from "@/lib/utils/format";
 import type { Appointment, Professional, Service } from "@/types";
 
 type ViewMode = "day" | "week" | "month";
@@ -20,11 +20,16 @@ const STATUS_BADGE: Record<string, string> = {
   no_show: "bg-slate-200 text-slate-600",
 };
 
+const HOURS = Array.from({ length: 13 }, (_, i) => i + 7);
+
+function startOfDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
 function startOfWeek(d: Date): Date {
-  const x = new Date(d);
+  const x = startOfDay(d);
   const day = (x.getDay() + 6) % 7;
   x.setDate(x.getDate() - day);
-  x.setHours(0, 0, 0, 0);
   return x;
 }
 
@@ -34,10 +39,18 @@ function addDays(d: Date, n: number): Date {
   return x;
 }
 
+function addMonths(d: Date, n: number): Date {
+  return new Date(d.getFullYear(), d.getMonth() + n, d.getDate());
+}
+
+function minutesFromMidnight(d: Date): number {
+  return d.getHours() * 60 + d.getMinutes();
+}
+
 export default function AgendaPage() {
   const { activeTenantId } = useTenant();
   const [view, setView] = useState<ViewMode>("day");
-  const [anchor, setAnchor] = useState<Date>(() => new Date());
+  const [anchor, setAnchor] = useState<Date>(() => startOfDay(new Date()));
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -47,19 +60,18 @@ export default function AgendaPage() {
   const [filterStatus, setFilterStatus] = useState("all");
 
   const range = useMemo(() => {
-    if (view === "day") return { from: new Date(anchor.setHours(0, 0, 0, 0)), to: addDays(new Date(anchor.setHours(0, 0, 0, 0)), 1) };
+    if (view === "day") {
+      const from = startOfDay(anchor);
+      return { from, to: addDays(from, 1) };
+    }
     if (view === "week") {
-      const start = startOfWeek(anchor);
-      return { from: start, to: addDays(start, 7) };
+      const from = startOfWeek(anchor);
+      return { from, to: addDays(from, 7) };
     }
     const from = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
     const to = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 1);
     return { from, to };
   }, [view, anchor]);
-
-  useEffect(() => {
-    setAnchor(new Date());
-  }, [view]);
 
   const load = useCallback(async () => {
     if (!activeTenantId) return;
@@ -72,8 +84,7 @@ export default function AgendaPage() {
     setProfessionals(pros);
     setServices(svcs);
     setLoading(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTenantId, range.from.getTime(), range.to.getTime()]);
+  }, [activeTenantId, range.from, range.to]);
 
   useEffect(() => {
     setLoading(true);
@@ -94,6 +105,21 @@ export default function AgendaPage() {
     });
   }, [appointments, filterProfessional, filterService, filterStatus]);
 
+  function step(dir: -1 | 1) {
+    setAnchor((current) => {
+      if (view === "day") return addDays(current, dir);
+      if (view === "week") return addDays(current, dir * 7);
+      return addMonths(current, dir);
+    });
+  }
+
+  const rangeLabel =
+    view === "day"
+      ? anchor.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })
+      : view === "week"
+        ? `${startOfWeek(anchor).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} — ${addDays(startOfWeek(anchor), 6).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}`
+        : anchor.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+
   if (loading) return <p className="text-slate-500">Carregando...</p>;
 
   return (
@@ -104,13 +130,13 @@ export default function AgendaPage() {
           <p className="text-sm text-slate-500">Visualize e gerencie a agenda do seu negócio.</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => setAnchor((a) => addDays(a, -1))} className="btn-secondary py-1.5">
+          <button onClick={() => step(-1)} className="btn-secondary py-1.5">
             Anterior
           </button>
-          <button onClick={() => setAnchor(new Date())} className="btn-secondary py-1.5">
+          <button onClick={() => setAnchor(startOfDay(new Date()))} className="btn-secondary py-1.5">
             Hoje
           </button>
-          <button onClick={() => setAnchor((a) => addDays(a, 1))} className="btn-secondary py-1.5">
+          <button onClick={() => step(1)} className="btn-secondary py-1.5">
             Próximo
           </button>
           <select
@@ -124,6 +150,8 @@ export default function AgendaPage() {
           </select>
         </div>
       </div>
+
+      <p className="text-sm font-medium capitalize text-slate-700">{rangeLabel}</p>
 
       <div className="flex flex-wrap items-center gap-3">
         <select
@@ -162,29 +190,55 @@ export default function AgendaPage() {
             </option>
           ))}
         </select>
+        <Link href="/app/appointments" className="btn-secondary py-1.5 text-sm">
+          Novo / remarcar
+        </Link>
       </div>
 
-      <div className="card p-4 text-sm text-slate-600">
-        {view === "month" ? (
-          <MonthView
-            anchor={anchor}
-            appointments={filtered}
-            nameOf={nameOf}
-          />
-        ) : (
-          <ListView
-            appointments={filtered}
-            nameOf={nameOf}
-            view={view}
-            anchor={anchor}
-          />
-        )}
+      {view === "month" ? (
+        <div className="card p-4">
+          <MonthView anchor={anchor} appointments={filtered} nameOf={nameOf} />
+        </div>
+      ) : (
+        <>
+          <div className="hidden md:block">
+            <TimeGrid appointments={filtered} nameOf={nameOf} view={view} anchor={anchor} />
+          </div>
+          <div className="md:hidden">
+            <MobileCards appointments={filtered} nameOf={nameOf} view={view} anchor={anchor} />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function AppointmentCard({
+  a,
+  nameOf,
+}: {
+  a: Appointment;
+  nameOf: (id: string, kind: "professional" | "service") => string;
+}) {
+  const start = toDate(a.startAt);
+  const end = toDate(a.endAt);
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-3">
+      <div className="text-sm font-semibold text-slate-900">
+        {start.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+        {" — "}
+        {end.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+      </div>
+      <div className="mt-1 text-sm text-slate-700">{nameOf(a.serviceId, "service")}</div>
+      <div className="text-xs text-slate-500">{nameOf(a.professionalId, "professional")}</div>
+      <div className="mt-2">
+        <span className={`badge ${STATUS_BADGE[a.status] ?? "bg-slate-100 text-slate-600"}`}>{a.status}</span>
       </div>
     </div>
   );
 }
 
-function ListView({
+function MobileCards({
   appointments,
   nameOf,
   view,
@@ -195,37 +249,108 @@ function ListView({
   view: ViewMode;
   anchor: Date;
 }) {
-  const days = view === "day" ? [anchor] : Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(anchor), i));
-  const byDay = days.map((d) => appointments.filter((a) => sameDay(toDate(a.startAt), d)));
+  const days = view === "day" ? [startOfDay(anchor)] : Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(anchor), i));
+  return (
+    <div className="space-y-4">
+      {days.map((d) => {
+        const items = appointments.filter((a) => sameDay(toDate(a.startAt), d));
+        return (
+          <div key={d.toISOString()} className="space-y-2">
+            <div className="text-xs font-semibold uppercase text-slate-500">
+              {d.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit" })}
+            </div>
+            {items.length === 0 ? (
+              <p className="rounded-lg bg-slate-50 p-3 text-center text-xs text-slate-400">Sem agendamentos</p>
+            ) : (
+              items.map((a) => <AppointmentCard key={a.id} a={a} nameOf={nameOf} />)
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function TimeGrid({
+  appointments,
+  nameOf,
+  view,
+  anchor,
+}: {
+  appointments: Appointment[];
+  nameOf: (id: string, kind: "professional" | "service") => string;
+  view: ViewMode;
+  anchor: Date;
+}) {
+  const days = view === "day" ? [startOfDay(anchor)] : Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(anchor), i));
+  const startMin = HOURS[0] * 60;
+  const endMin = (HOURS[HOURS.length - 1] + 1) * 60;
+  const height = (endMin - startMin) * 1.1;
 
   return (
-    <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0,1fr))` }}>
-      {days.map((d, i) => (
-        <div key={d.toISOString()} className="min-w-0">
-          <div className="mb-2 text-center text-xs font-semibold uppercase text-slate-500">
-            {d.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" })}
-          </div>
-          <div className="space-y-2">
-            {byDay[i].length === 0 && (
-              <p className="rounded-lg bg-slate-50 p-2 text-center text-xs text-slate-400">Sem agendamentos</p>
-            )}
-            {byDay[i].map((a) => (
-              <div key={a.id} className="rounded-lg border border-slate-200 p-2">
-                <div className="text-xs font-semibold text-slate-900">
-                  {toDate(a.startAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                </div>
-                <div className="mt-1 text-xs text-slate-600">{nameOf(a.serviceId, "service")}</div>
-                <div className="text-xs text-slate-500">{nameOf(a.professionalId, "professional")}</div>
-                <div className="mt-1">
-                  <span className={`badge ${STATUS_BADGE[a.status] ?? "bg-slate-100 text-slate-600"}`}>
-                    {a.status}
-                  </span>
-                </div>
+    <div className="card overflow-x-auto p-0">
+      <div className="min-w-[640px]">
+        <div
+          className="grid border-b border-slate-200 bg-slate-50"
+          style={{ gridTemplateColumns: `64px repeat(${days.length}, minmax(0, 1fr))` }}
+        >
+          <div />
+          {days.map((d) => (
+            <div key={d.toISOString()} className="px-2 py-2 text-center text-xs font-semibold uppercase text-slate-500">
+              {d.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" })}
+            </div>
+          ))}
+        </div>
+        <div
+          className="grid"
+          style={{ gridTemplateColumns: `64px repeat(${days.length}, minmax(0, 1fr))` }}
+        >
+          <div className="relative" style={{ height }}>
+            {HOURS.map((h) => (
+              <div
+                key={h}
+                className="absolute right-2 text-[10px] text-slate-400"
+                style={{ top: (h * 60 - startMin) * 1.1 }}
+              >
+                {String(h).padStart(2, "0")}:00
               </div>
             ))}
           </div>
+          {days.map((d) => {
+            const items = appointments.filter((a) => sameDay(toDate(a.startAt), d));
+            return (
+              <div key={d.toISOString()} className="relative border-l border-slate-100" style={{ height }}>
+                {HOURS.map((h) => (
+                  <div
+                    key={h}
+                    className="absolute inset-x-0 border-t border-slate-100"
+                    style={{ top: (h * 60 - startMin) * 1.1 }}
+                  />
+                ))}
+                {items.map((a) => {
+                  const start = toDate(a.startAt);
+                  const end = toDate(a.endAt);
+                  const top = (minutesFromMidnight(start) - startMin) * 1.1;
+                  const h = Math.max((minutesFromMidnight(end) - minutesFromMidnight(start)) * 1.1, 28);
+                  return (
+                    <div
+                      key={a.id}
+                      className="absolute inset-x-1 overflow-hidden rounded bg-brand-50 px-1 py-0.5 text-[10px] text-brand-800"
+                      style={{ top, height: h }}
+                      title={`${nameOf(a.serviceId, "service")} · ${nameOf(a.professionalId, "professional")}`}
+                    >
+                      <div className="font-semibold">
+                        {start.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                      </div>
+                      <div className="truncate">{nameOf(a.serviceId, "service")}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
         </div>
-      ))}
+      </div>
     </div>
   );
 }
@@ -247,12 +372,14 @@ function MonthView({
 
   return (
     <div>
-      <div className="mb-2 text-center text-sm font-semibold text-slate-700">
+      <div className="mb-2 text-center text-sm font-semibold capitalize text-slate-700">
         {anchor.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
       </div>
       <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-slate-500">
         {["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"].map((d) => (
-          <div key={d} className="py-1">{d}</div>
+          <div key={d} className="py-1">
+            {d}
+          </div>
         ))}
       </div>
       <div className="grid grid-cols-7 gap-1">
@@ -266,9 +393,7 @@ function MonthView({
                 inMonth ? "border-slate-200 bg-white" : "border-slate-100 bg-slate-50"
               }`}
             >
-              <div className={`text-xs ${inMonth ? "text-slate-700" : "text-slate-300"}`}>
-                {d.getDate()}
-              </div>
+              <div className={`text-xs ${inMonth ? "text-slate-700" : "text-slate-300"}`}>{d.getDate()}</div>
               <div className="mt-1 space-y-1">
                 {dayApps.slice(0, 2).map((a) => (
                   <div key={a.id} className="truncate rounded bg-brand-50 px-1 text-[10px] text-brand-700">
@@ -276,9 +401,7 @@ function MonthView({
                     {nameOf(a.serviceId, "service")}
                   </div>
                 ))}
-                {dayApps.length > 2 && (
-                  <div className="text-[10px] text-slate-400">+{dayApps.length - 2} mais</div>
-                )}
+                {dayApps.length > 2 && <div className="text-[10px] text-slate-400">+{dayApps.length - 2} mais</div>}
               </div>
             </div>
           );

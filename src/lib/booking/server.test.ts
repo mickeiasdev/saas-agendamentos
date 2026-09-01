@@ -5,6 +5,7 @@ import {
   cancelPublicAppointment,
   createPublicAppointment,
   listPublicSlots,
+  reschedulePublicAppointment,
 } from "./server";
 import { getPlan } from "@/lib/plans";
 
@@ -397,6 +398,79 @@ describe("isolamento multi-tenant (Tenant A -> Tenant B)", () => {
     expect(db.store.get(`tenants/tA/appointments/${a.appointmentId}`)!.customerId).not.toBe(
       db.store.get(`tenants/tB/appointments/${b.appointmentId}`)!.customerId
     );
+  });
+});
+
+describe("remarcação", () => {
+  it("remarca um agendamento futuro para outro horário", async () => {
+    const db = new FakeFirestore();
+    seedTenant(db);
+    const { appointmentId } = await createBooking(db, { time: "10:00" });
+
+    const result = await reschedulePublicAppointment(db as never, {
+      tenantSlug: "tena",
+      appointmentId,
+      date: MONDAY,
+      time: "14:00",
+    });
+    expect(result.ok).toBe(true);
+    expect(result.appointmentId).not.toBe(appointmentId);
+
+    const old = db.store.get(`tenants/t1/appointments/${appointmentId}`);
+    expect(old!.status).toBe("cancelled");
+    expect(old!.cancellationReason).toBe("remarcado");
+    expect(old!.rescheduledTo).toBe(result.appointmentId);
+
+    const next = db.store.get(`tenants/t1/appointments/${result.appointmentId}`);
+    expect(next).toBeTruthy();
+    expect(next!.status).toBe("confirmed");
+    expect(next!.customerId).toBe(old!.customerId);
+  });
+
+  it("rejeita remarcação para horário já ocupado", async () => {
+    const db = new FakeFirestore();
+    seedTenant(db);
+    const first = await createBooking(db, { time: "10:00" });
+    await createBooking(db, { time: "14:00" });
+    await expect(
+      reschedulePublicAppointment(db as never, {
+        tenantSlug: "tena",
+        appointmentId: first.appointmentId,
+        date: MONDAY,
+        time: "14:00",
+      })
+    ).rejects.toThrow("indisponível");
+  });
+
+  it("rejeita remarcação de agendamento já cancelado", async () => {
+    const db = new FakeFirestore();
+    seedTenant(db);
+    const { appointmentId } = await createBooking(db);
+    await cancelPublicAppointment(db as never, { tenantSlug: "tena", appointmentId });
+    await expect(
+      reschedulePublicAppointment(db as never, {
+        tenantSlug: "tena",
+        appointmentId,
+        date: MONDAY,
+        time: "15:00",
+      })
+    ).rejects.toThrow("já foi cancelado");
+  });
+
+  it("não remarca agendamento do Tenant A usando o slug do Tenant B", async () => {
+    const db = new FakeFirestore();
+    seedTenant(db, { tenantId: "tA", slug: "tena" });
+    seedTenant(db, { tenantId: "tB", slug: "tenb" });
+    const { appointmentId } = await createBooking(db);
+    await expect(
+      reschedulePublicAppointment(db as never, {
+        tenantSlug: "tenb",
+        appointmentId,
+        date: MONDAY,
+        time: "15:00",
+      })
+    ).rejects.toThrow("não encontrado");
+    expect(db.store.get(`tenants/tA/appointments/${appointmentId}`)!.status).not.toBe("cancelled");
   });
 });
 

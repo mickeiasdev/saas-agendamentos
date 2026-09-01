@@ -1,10 +1,11 @@
 import { getApp, getApps, initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { browserLocalPersistence, getAuth, setPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getFirebaseConfig } from "./config";
 
 const config = getFirebaseConfig();
+let persistenceConfigured = false;
 
 export function initFirebase() {
   if (!config) {
@@ -17,7 +18,12 @@ export function initFirebase() {
 }
 
 export function getFirebaseAuth() {
-  return getAuth(initFirebase());
+  const auth = getAuth(initFirebase());
+  if (!persistenceConfigured) {
+    persistenceConfigured = true;
+    void setPersistence(auth, browserLocalPersistence);
+  }
+  return auth;
 }
 
 export function getFirebaseFirestore() {

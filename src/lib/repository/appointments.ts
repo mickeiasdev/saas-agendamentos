@@ -1,4 +1,5 @@
 import {
+  collection,
   doc,
   getDoc,
   getDocs,
@@ -12,14 +13,26 @@ import {
 } from "firebase/firestore";
 import { getFirebaseFirestore } from "@/lib/firebase/client";
 import { tenantCollections } from "./collections";
-import type { Appointment } from "@/types";
+import { DEFAULT_TZ, validateSlotAvailability } from "@/lib/booking/timezone";
+import type { Appointment, Holiday, Professional, ProfessionalAvailability, Service, Tenant } from "@/types";
 
 const collectionFor = (tenantId: string) =>
   tenantCollections(getFirebaseFirestore(), tenantId).appointments();
 
+function toDateValue(v: unknown): Date {
+  if (v instanceof Date) return v;
+  if (v && typeof v === "object" && typeof (v as { toDate?: unknown }).toDate === "function") {
+    return (v as { toDate: () => Date }).toDate();
+  }
+  return new Date(String(v));
+}
+
 export async function listAppointments(
   tenantId: string,
-  opts: { from: Date; to: Date; professionalId?: string; status?: string } = { from: new Date(0), to: new Date(8640000000000000) }
+  opts: { from: Date; to: Date; professionalId?: string; status?: string } = {
+    from: new Date(0),
+    to: new Date(8640000000000000),
+  }
 ): Promise<Appointment[]> {
   let q = query(
     collectionFor(tenantId),
@@ -82,45 +95,92 @@ function appointmentDocFromInput(input: CreateAppointmentInput): Record<string, 
   };
 }
 
+function isBlockingStatus(status: Appointment["status"] | undefined): boolean {
+  return status !== "cancelled" && status !== "no_show";
+}
+
+async function loadStaffBookingContext(tenantId: string, professionalId: string, serviceId: string) {
+  const db = getFirebaseFirestore();
+  const cols = tenantCollections(db, tenantId);
+
+  const [tenantSnap, proSnap, svcSnap] = await Promise.all([
+    getDoc(doc(db, "tenants", tenantId)),
+    getDoc(doc(cols.professionals(), professionalId)),
+    getDoc(doc(cols.services(), serviceId)),
+  ]);
+  if (!tenantSnap.exists()) throw new Error("Empresa não encontrada.");
+  const tenant = tenantSnap.data() as Tenant;
+  if (!proSnap.exists()) throw new Error("Profissional não encontrado.");
+  const professional = { id: proSnap.id, ...proSnap.data() } as Professional;
+  if (!professional.active) throw new Error("Profissional indisponível.");
+  if (!svcSnap.exists()) throw new Error("Serviço não encontrado.");
+  const service = { id: svcSnap.id, ...svcSnap.data() } as Service;
+  if (service.status !== "active") throw new Error("Serviço indisponível.");
+  if (service.professionals?.length && !service.professionals.includes(professionalId)) {
+    throw new Error("Este profissional não realiza este serviço.");
+  }
+
+  const avSnap = await getDocs(query(cols.availability(), where("professionalId", "==", professionalId)));
+  const availability = avSnap.empty
+    ? null
+    : ({ id: avSnap.docs[0].id, ...avSnap.docs[0].data() } as ProfessionalAvailability);
+
+  const holidaysSnap = await getDocs(cols.holidays());
+  const holidays = holidaysSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as Holiday);
+  const tz = tenant.settings?.timezone || DEFAULT_TZ;
+
+  return { db, tenant, professional, service, availability, holidays, tz };
+}
+
 /**
  * Cria um agendamento com PREVENÇÃO DE DOUBLE BOOKING.
  *
- * Estratégia: o ID do documento é determinístico a partir do profissional e do
- * início do horário (`{profissional}_{timestamp}`). Dentro de uma transação
- * Firestore, verificamos se o documento já existe antes de gravar. Dois clientes
- * tentando reservar o MESMO horário geram o MESMO ID: quando a transação do
- * segundo cliente é executada após a do primeiro, a leitura encontra o documento
- * existente e o agendamento é recusado.
- *
- * Uma checagem adicional por sobreposição (query) roda antes da transação para
- * impedir horários conflitantes criados manualmente fora do grid de slots.
+ * Valida expediente, intervalo, folga, férias, feriado e profissional
+ * indisponível. A checagem de overlap roda DENTRO da transação Firestore
+ * (não só o slot-id determinístico).
  */
 export async function createAppointment(input: CreateAppointmentInput): Promise<string> {
-  const db = getFirebaseFirestore();
-  const appointmentsCol = tenantCollections(db, input.tenantId).appointments();
-
-  const overlapQuery = query(
-    appointmentsCol,
-    where("professionalId", "==", input.professionalId),
-    where("startAt", "<", input.endAt),
-    where("endAt", ">", input.startAt)
+  const { db, availability, holidays, tz } = await loadStaffBookingContext(
+    input.tenantId,
+    input.professionalId,
+    input.serviceId
   );
-  const overlapSnap = await getDocs(overlapQuery);
-  const overlaps = overlapSnap.docs
-    .map((d) => d.data() as Appointment)
-    .filter((a) => a.status !== "cancelled" && a.status !== "no_show");
-  if (overlaps.length > 0) {
-    throw new Error("Horário indisponível: já existe um agendamento neste intervalo.");
-  }
 
+  const valid = validateSlotAvailability({
+    availability,
+    holidays,
+    durationMinutes: Math.round((input.endAt.getTime() - input.startAt.getTime()) / 60000),
+    instant: input.startAt,
+    tz,
+  });
+  if (!valid.ok) throw new Error(valid.reason ?? "Horário indisponível.");
+
+  const appointmentsCol = tenantCollections(db, input.tenantId).appointments();
   const slotId = `${input.professionalId}_${input.startAt.getTime()}`;
   const ref = doc(appointmentsCol, slotId);
 
   await runTransaction(db, async (tx) => {
     const existing = await tx.get(ref);
-    if (existing.exists()) {
+    if (existing.exists() && isBlockingStatus((existing.data() as Appointment).status)) {
       throw new Error("Horário indisponível: este horário acabou de ser reservado.");
     }
+
+    const overlapQuery = query(
+      appointmentsCol,
+      where("professionalId", "==", input.professionalId),
+      where("startAt", "<", input.endAt),
+      where("endAt", ">", input.startAt)
+    );
+    const overlapSnap = await tx.get(overlapQuery);
+    const overlaps = overlapSnap.docs.filter((d) => {
+      if (d.id === slotId) return false;
+      const data = d.data() as Appointment;
+      return isBlockingStatus(data.status);
+    });
+    if (overlaps.length > 0) {
+      throw new Error("Horário indisponível: já existe um agendamento neste intervalo.");
+    }
+
     tx.set(ref, appointmentDocFromInput(input));
   });
 
@@ -143,6 +203,98 @@ export async function updateAppointmentStatus(
   await updateDoc(doc(collectionFor(tenantId), id), patch);
 }
 
+export interface RescheduleAppointmentInput {
+  tenantId: string;
+  appointmentId: string;
+  professionalId: string;
+  serviceId: string;
+  startAt: Date;
+  endAt: Date;
+}
+
+export async function rescheduleAppointment(input: RescheduleAppointmentInput): Promise<string> {
+  const { db, availability, holidays, tz } = await loadStaffBookingContext(
+    input.tenantId,
+    input.professionalId,
+    input.serviceId
+  );
+
+  const valid = validateSlotAvailability({
+    availability,
+    holidays,
+    durationMinutes: Math.round((input.endAt.getTime() - input.startAt.getTime()) / 60000),
+    instant: input.startAt,
+    tz,
+  });
+  if (!valid.ok) throw new Error(valid.reason ?? "Horário indisponível.");
+
+  const appointmentsCol = tenantCollections(db, input.tenantId).appointments();
+  const oldRef = doc(appointmentsCol, input.appointmentId);
+  const newId = `${input.professionalId}_${input.startAt.getTime()}`;
+  const newRef = doc(appointmentsCol, newId);
+
+  await runTransaction(db, async (tx) => {
+    const oldSnap = await tx.get(oldRef);
+    if (!oldSnap.exists()) throw new Error("Agendamento não encontrado.");
+    const current = oldSnap.data() as Appointment;
+    if (current.status === "cancelled" || current.status === "completed" || current.status === "no_show") {
+      throw new Error("Este agendamento não pode ser remarcado.");
+    }
+
+    if (oldRef.id !== newRef.id) {
+      const existing = await tx.get(newRef);
+      if (existing.exists() && isBlockingStatus((existing.data() as Appointment).status)) {
+        throw new Error("Horário indisponível: este horário acabou de ser reservado.");
+      }
+    }
+
+    const overlapQuery = query(
+      appointmentsCol,
+      where("professionalId", "==", input.professionalId),
+      where("startAt", "<", input.endAt),
+      where("endAt", ">", input.startAt)
+    );
+    const overlapSnap = await tx.get(overlapQuery);
+    const overlaps = overlapSnap.docs.filter((d) => {
+      if (d.id === input.appointmentId || d.id === newId) return false;
+      return isBlockingStatus((d.data() as Appointment).status);
+    });
+    if (overlaps.length > 0) {
+      throw new Error("Horário indisponível: já existe um agendamento neste intervalo.");
+    }
+
+    const payload = {
+      ...current,
+      professionalId: input.professionalId,
+      serviceId: input.serviceId,
+      startAt: input.startAt,
+      endAt: input.endAt,
+      status: current.status === "pending" ? "pending" : "confirmed",
+      updatedAt: serverTimestamp(),
+    };
+
+    if (oldRef.id === newRef.id) {
+      tx.update(oldRef, {
+        professionalId: input.professionalId,
+        serviceId: input.serviceId,
+        startAt: input.startAt,
+        endAt: input.endAt,
+        updatedAt: serverTimestamp(),
+      });
+    } else {
+      tx.set(newRef, payload);
+      tx.update(oldRef, {
+        status: "cancelled",
+        cancellationReason: "remarcado",
+        rescheduledTo: newId,
+        updatedAt: serverTimestamp(),
+      });
+    }
+  });
+
+  return newId;
+}
+
 export async function listAppointmentsByCustomer(
   tenantId: string,
   customerId: string,
@@ -162,3 +314,6 @@ export async function getAppointment(tenantId: string, id: string): Promise<Appo
   const snap = await getDoc(doc(collectionFor(tenantId), id));
   return snap.exists() ? ({ id: snap.id, ...snap.data() } as Appointment) : null;
 }
+
+void collection;
+void toDateValue;

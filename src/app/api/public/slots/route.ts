@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAdminFirestore } from "@/lib/server/firebaseAdmin";
-import { getMockSlots } from "@/lib/server/mockTenant";
+import { adminSdkMissingResponse, getAdminFirestore } from "@/lib/server/firebaseAdmin";
 import { listPublicSlots, BookingError } from "@/lib/booking/server";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +17,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (!db) {
-    return Response.json(getMockSlots({ serviceId, professionalId, date }));
+    return adminSdkMissingResponse();
   }
 
   try {

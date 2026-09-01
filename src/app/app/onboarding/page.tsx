@@ -2,7 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { getFirebaseFirestore } from "@/lib/firebase/client";
 import { useTenant } from "@/lib/tenant/TenantContext";
+import { uploadTenantImage } from "@/lib/storage/upload";
 
 const SEGMENTS = [
   { id: "barber", label: "Barbearia" },
@@ -38,6 +41,8 @@ export default function OnboardingPage() {
   const [state, setState] = useState("");
   const [zip, setZip] = useState("");
   const [segmentId, setSegmentId] = useState("barber");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -67,7 +72,13 @@ export default function OnboardingPage() {
         segmentId,
         slug: name,
       });
-      void tenantId;
+      if (logoFile) {
+        const logoUrl = await uploadTenantImage(tenantId, "logo", logoFile);
+        await updateDoc(doc(getFirebaseFirestore(), "tenants", tenantId), {
+          logoUrl,
+          updatedAt: serverTimestamp(),
+        });
+      }
       router.push("/app");
     } catch (err) {
       setError((err as Error).message ?? "Erro ao criar a empresa.");
@@ -137,6 +148,30 @@ export default function OnboardingPage() {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
+        </div>
+        <div>
+          <label className="label" htmlFor="logo">Logo da empresa</label>
+          <div className="flex items-center gap-3">
+            {logoPreview ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoPreview} alt="" className="h-14 w-14 rounded-lg object-cover" />
+            ) : (
+              <span className="flex h-14 w-14 items-center justify-center rounded-lg bg-slate-100 text-xs text-slate-400">
+                —
+              </span>
+            )}
+            <input
+              id="logo"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium"
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null;
+                setLogoFile(file);
+                setLogoPreview(file ? URL.createObjectURL(file) : "");
+              }}
+            />
+          </div>
         </div>
         <fieldset className="rounded-lg border border-slate-200 p-4">
           <legend className="px-1 text-sm font-medium text-slate-700">Endereço</legend>

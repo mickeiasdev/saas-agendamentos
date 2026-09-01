@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAdminFirestore } from "@/lib/server/firebaseAdmin";
+import { adminSdkMissingResponse, getAdminFirestore } from "@/lib/server/firebaseAdmin";
 import { BookingError, cancelPublicAppointment } from "@/lib/booking/server";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (!db) {
-    return Response.json({ ok: true });
+    return adminSdkMissingResponse();
   }
 
   try {

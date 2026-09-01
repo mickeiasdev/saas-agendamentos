@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAdminFirestore } from "@/lib/server/firebaseAdmin";
-import { createMockAppointment } from "@/lib/server/mockTenant";
+import { adminSdkMissingResponse, getAdminFirestore } from "@/lib/server/firebaseAdmin";
 import { createPublicAppointment, BookingError, type PublicBookingInput } from "@/lib/booking/server";
 
 export const dynamic = "force-dynamic";
@@ -40,8 +39,7 @@ export async function POST(req: NextRequest) {
   };
 
   if (!db) {
-    const result = createMockAppointment(cleaned);
-    return Response.json({ ok: true, ...result });
+    return adminSdkMissingResponse();
   }
 
   try {

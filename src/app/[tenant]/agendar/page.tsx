@@ -43,6 +43,14 @@ export default function BookingPage({
   const [error, setError] = useState("");
   const [appointmentId, setAppointmentId] = useState("");
   const [confirmedPrice, setConfirmedPrice] = useState<number | null>(null);
+  const [doneAction, setDoneAction] = useState<"idle" | "cancelled" | "rescheduled">("idle");
+  const [cancelling, setCancelling] = useState(false);
+  const [rescheduling, setRescheduling] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleTimes, setRescheduleTimes] = useState<string[]>([]);
+  const [rescheduleTime, setRescheduleTime] = useState<string | null>(null);
+  const [loadingRescheduleSlots, setLoadingRescheduleSlots] = useState(false);
+  const [showReschedule, setShowReschedule] = useState(false);
 
   useEffect(() => {
     void fetch(`/api/public/site/${encodeURIComponent(slug)}`)
@@ -93,6 +101,82 @@ export default function BookingPage({
       .finally(() => setLoadingSlots(false));
   }, [date, professional, service, tenant]);
 
+  useEffect(() => {
+    if (!showReschedule || !rescheduleDate || !professional || !service || !tenant) return;
+    setLoadingRescheduleSlots(true);
+    setRescheduleTime(null);
+    const params = new URLSearchParams({
+      tenant: tenant.slug,
+      serviceId: service.id,
+      professionalId: professional.id,
+      date: rescheduleDate,
+    });
+    void fetch(`/api/public/slots?${params.toString()}`)
+      .then(async (res) => {
+        const data = (await res.json()) as { slots?: string[]; error?: string };
+        if (!res.ok) throw new Error(data.error ?? "Não foi possível consultar os horários.");
+        setRescheduleTimes(data.slots ?? []);
+      })
+      .catch((err) => {
+        setError((err as Error).message);
+        setRescheduleTimes([]);
+      })
+      .finally(() => setLoadingRescheduleSlots(false));
+  }, [showReschedule, rescheduleDate, professional, service, tenant]);
+
+  async function handleCancel() {
+    if (!tenant || !appointmentId) return;
+    setError("");
+    setCancelling(true);
+    try {
+      const res = await fetch("/api/public/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tenantSlug: tenant.slug, appointmentId }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok || !data.ok) throw new Error(data.error ?? "Não foi possível cancelar.");
+      setDoneAction("cancelled");
+      setShowReschedule(false);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setCancelling(false);
+    }
+  }
+
+  async function handleReschedule(e: React.FormEvent) {
+    e.preventDefault();
+    if (!tenant || !appointmentId || !rescheduleDate || !rescheduleTime) return;
+    setError("");
+    setRescheduling(true);
+    try {
+      const res = await fetch("/api/public/reschedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tenantSlug: tenant.slug,
+          appointmentId,
+          date: rescheduleDate,
+          time: rescheduleTime,
+          professionalId: professional?.id,
+          serviceId: service?.id,
+        }),
+      });
+      const data = (await res.json()) as { ok?: boolean; appointmentId?: string; error?: string };
+      if (!res.ok || !data.ok) throw new Error(data.error ?? "Não foi possível remarcar.");
+      setAppointmentId(data.appointmentId ?? appointmentId);
+      setDate(rescheduleDate);
+      setSelectedTime(rescheduleTime);
+      setDoneAction("rescheduled");
+      setShowReschedule(false);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setRescheduling(false);
+    }
+  }
+
   async function handleConfirm(e: React.FormEvent) {
     e.preventDefault();
     if (!tenant || !service || !professional || !selectedTime) return;
@@ -123,6 +207,8 @@ export default function BookingPage({
       }
       setAppointmentId(data.appointmentId ?? "");
       setConfirmedPrice(data.price ?? service.price);
+      setDoneAction("idle");
+      setShowReschedule(false);
       setStep("done");
     } catch (err) {
       setError((err as Error).message ?? "Não foi possível confirmar o agendamento.");
@@ -381,20 +467,106 @@ export default function BookingPage({
           <div className="card text-center">
             <div
               className="mx-auto flex h-16 w-16 items-center justify-center rounded-full text-3xl text-white"
-              style={{ backgroundColor: primary }}
+              style={{ backgroundColor: doneAction === "cancelled" ? "#64748b" : primary }}
             >
-              OK
+              {doneAction === "cancelled" ? "X" : "OK"}
             </div>
-            <h1 className="mt-4 text-2xl font-bold text-slate-900">Agendamento confirmado!</h1>
-            <p className="mt-2 text-sm text-slate-600">
-              {service?.name} com {professional?.name} em {dateLabel} às {selectedTime}
-            </p>
-            {confirmedPrice !== null && confirmedPrice !== service?.price && (
+            <h1 className="mt-4 text-2xl font-bold text-slate-900">
+              {doneAction === "cancelled"
+                ? "Agendamento cancelado"
+                : doneAction === "rescheduled"
+                  ? "Agendamento remarcado!"
+                  : "Agendamento confirmado!"}
+            </h1>
+            {doneAction !== "cancelled" && (
+              <p className="mt-2 text-sm text-slate-600">
+                {service?.name} com {professional?.name} em {dateLabel} às {selectedTime}
+              </p>
+            )}
+            {doneAction !== "cancelled" && confirmedPrice !== null && confirmedPrice !== service?.price && (
               <p className="mt-1 text-sm font-semibold text-green-600">
                 Valor com desconto: {formatBRL(confirmedPrice)}
               </p>
             )}
             <p className="mt-1 text-xs text-slate-400">Código: {appointmentId.slice(0, 8).toUpperCase()}</p>
+
+            {doneAction !== "cancelled" && !showReschedule && (
+              <div className="mt-6 flex flex-wrap justify-center gap-3">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    setShowReschedule(true);
+                    setRescheduleDate(date);
+                    setError("");
+                  }}
+                >
+                  Remarcar
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary text-red-700"
+                  disabled={cancelling}
+                  onClick={() => void handleCancel()}
+                >
+                  {cancelling ? "Cancelando..." : "Cancelar agendamento"}
+                </button>
+              </div>
+            )}
+
+            {showReschedule && doneAction !== "cancelled" && (
+              <form onSubmit={handleReschedule} className="mt-6 space-y-4 text-left">
+                <h2 className="text-lg font-semibold text-slate-900">Escolha o novo horário</h2>
+                <div>
+                  <label className="label">Data</label>
+                  <input
+                    type="date"
+                    className="input"
+                    min={new Date().toISOString().split("T")[0]}
+                    value={rescheduleDate}
+                    onChange={(e) => setRescheduleDate(e.target.value)}
+                    required
+                  />
+                </div>
+                {rescheduleDate && (
+                  <div>
+                    <label className="label">Horários disponíveis</label>
+                    {loadingRescheduleSlots ? (
+                      <p className="text-sm text-slate-500">Calculando horários...</p>
+                    ) : rescheduleTimes.length === 0 ? (
+                      <p className="text-sm text-slate-500">Nenhum horário nesta data.</p>
+                    ) : (
+                      <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+                        {rescheduleTimes.map((time) => (
+                          <button
+                            key={time}
+                            type="button"
+                            onClick={() => setRescheduleTime(time)}
+                            className="rounded-lg border px-2 py-2 text-sm font-medium"
+                            style={{
+                              backgroundColor: rescheduleTime === time ? primary : "#fff",
+                              color: rescheduleTime === time ? "#fff" : "#334155",
+                              borderColor: rescheduleTime === time ? primary : "#e2e8f0",
+                            }}
+                          >
+                            {time}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div className="flex gap-3">
+                  <button type="button" className="btn-secondary" onClick={() => setShowReschedule(false)}>
+                    Voltar
+                  </button>
+                  <button type="submit" className="btn-primary flex-1" disabled={rescheduling || !rescheduleTime}>
+                    {rescheduling ? "Remarcando..." : "Confirmar remarcação"}
+                  </button>
+                </div>
+              </form>
+            )}
+
             <div className="mt-6">
               <a href={`/${slug}`} className="btn-secondary">
                 Voltar ao site

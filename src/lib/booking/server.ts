@@ -41,11 +41,13 @@ async function loadBookingContext(
     throw new BookingError("Esta empresa está temporariamente suspensa.");
   }
 
-  const service = (await getDocData(db, tenant.id, "services", serviceId)) as Service | null;
-  if (!service || service.status !== "active") throw new BookingError("Serviço indisponível.");
+  const serviceData = await getDocData(db, tenant.id, "services", serviceId);
+  if (!serviceData || serviceData.status !== "active") throw new BookingError("Serviço indisponível.");
+  const service = { id: serviceId, ...serviceData } as Service;
 
-  const professional = (await getDocData(db, tenant.id, "professionals", professionalId)) as Professional | null;
-  if (!professional || !professional.active) throw new BookingError("Profissional indisponível.");
+  const professionalData = await getDocData(db, tenant.id, "professionals", professionalId);
+  if (!professionalData || professionalData.active === false) throw new BookingError("Profissional indisponível.");
+  const professional = { id: professionalId, ...professionalData } as Professional;
   if (service.professionals?.length && !service.professionals.includes(professionalId)) {
     throw new BookingError("Este profissional não realiza este serviço.");
   }
@@ -312,7 +314,10 @@ export async function createPublicAppointment(
   await db.runTransaction(async (tx) => {
     const existing = await tx.get(ref);
     if (existing.exists) {
-      throw new BookingError("Horário indisponível: este horário acabou de ser reservado por outra pessoa.");
+      const status = (existing.data() as Appointment | undefined)?.status;
+      if (status !== "cancelled" && status !== "no_show") {
+        throw new BookingError("Horário indisponível: este horário acabou de ser reservado por outra pessoa.");
+      }
     }
 
     const valid = validateSlotAvailability({
@@ -330,7 +335,11 @@ export async function createPublicAppointment(
         .where("startAt", "<", endAt)
         .where("endAt", ">", startAt)
     );
-    if (!overlap.empty) {
+    const blocking = overlap.docs.filter((d) => {
+      const status = (d.data() as Appointment).status;
+      return status !== "cancelled" && status !== "no_show";
+    });
+    if (blocking.length > 0) {
       throw new BookingError("Horário indisponível: já existe um agendamento neste intervalo.");
     }
 
@@ -346,6 +355,7 @@ export async function createPublicAppointment(
     }
 
   tx.set(ref, {
+    tenantId: tenant.id,
     professionalId: professional.id,
     serviceId: service.id,
     customerId,
@@ -425,4 +435,169 @@ export async function cancelPublicAppointment(
   });
 
   return { ok: true };
+}
+
+export interface RescheduleBookingInput {
+  tenantSlug: string;
+  appointmentId: string;
+  date: string;
+  time: string;
+  professionalId?: string;
+  serviceId?: string;
+}
+
+export interface RescheduleResult {
+  ok: boolean;
+  appointmentId: string;
+}
+
+/**
+ * Remarcação pública: valida expediente/overlap na transação e isola pelo slug.
+ * O agendamento antigo é cancelado (reason=remarcado) e um novo documento é criado.
+ */
+export async function reschedulePublicAppointment(
+  db: Firestore,
+  input: RescheduleBookingInput
+): Promise<RescheduleResult> {
+  const tenantSnap = await db.collection("tenants").where("slug", "==", input.tenantSlug).limit(1).get();
+  if (tenantSnap.empty) throw new BookingError("Empresa não encontrada.");
+  const tenant = { id: tenantSnap.docs[0].id, ...tenantSnap.docs[0].data() } as TenantWithId;
+  if (tenant.status === "suspended") {
+    throw new BookingError("Esta empresa está temporariamente suspensa.");
+  }
+
+  const oldRef = db.collection("tenants").doc(tenant.id).collection("appointments").doc(input.appointmentId);
+  const oldSnap = await oldRef.get();
+  if (!oldSnap.exists) throw new BookingError("Agendamento não encontrado.");
+  const current = oldSnap.data() as Appointment;
+  if (current.status === "cancelled") {
+    throw new BookingError("Este agendamento já foi cancelado.");
+  }
+  if (current.status === "completed" || current.status === "no_show") {
+    throw new BookingError("Este agendamento não pode mais ser remarcado.");
+  }
+
+  const professionalId = input.professionalId || current.professionalId;
+  const serviceId = input.serviceId || current.serviceId;
+  const { service, professional, tz } = await loadBookingContext(
+    db,
+    input.tenantSlug,
+    serviceId,
+    professionalId
+  );
+
+  const startAt = instantFromWallClock(input.date, input.time, tz);
+  const leadTime = tenant.settings?.bookingLeadTimeMinutes ?? 0;
+  if (startAt.getTime() <= Date.now() + leadTime * 60000) {
+    throw new BookingError(
+      leadTime > 0
+        ? `A remarcação deve ser feita com pelo menos ${leadTime} minuto(s) de antecedência.`
+        : "Não é possível remarcar para um horário que já passou."
+    );
+  }
+  const endAt = new Date(startAt.getTime() + service.durationMinutes * 60000);
+
+  const cancelWindow = tenant.settings?.bookingCancelWindowMinutes ?? 0;
+  if (cancelWindow > 0) {
+    const oldStart = toDateValue(current.startAt);
+    const deadline = new Date(oldStart.getTime() - cancelWindow * 60000);
+    if (Date.now() > deadline.getTime()) {
+      throw new BookingError(
+        `A remarcação deve ser feita com pelo menos ${cancelWindow} minuto(s) de antecedência.`
+      );
+    }
+  }
+
+  const { availability, holidays } = await loadSchedule(db, tenant.id, professional.id, input.date, tz);
+  const col = db.collection("tenants").doc(tenant.id).collection("appointments");
+  const newId = `${professional.id}_${startAt.getTime()}`;
+  const newRef = col.doc(newId);
+  const cancelWindowDeadline =
+    cancelWindow > 0 ? new Date(startAt.getTime() - cancelWindow * 60000) : null;
+
+  await db.runTransaction(async (tx) => {
+    const freshOld = await tx.get(oldRef);
+    if (!freshOld.exists) throw new BookingError("Agendamento não encontrado.");
+    const fresh = freshOld.data() as Appointment;
+    if (fresh.status === "cancelled" || fresh.status === "completed" || fresh.status === "no_show") {
+      throw new BookingError("Este agendamento não pode mais ser remarcado.");
+    }
+
+    if (oldRef.path !== newRef.path) {
+      const existing = await tx.get(newRef);
+      if (existing.exists) {
+        const status = (existing.data() as Appointment | undefined)?.status;
+        if (status !== "cancelled" && status !== "no_show") {
+          throw new BookingError("Horário indisponível: este horário acabou de ser reservado por outra pessoa.");
+        }
+      }
+    }
+
+    const valid = validateSlotAvailability({
+      availability,
+      holidays,
+      durationMinutes: service.durationMinutes,
+      instant: startAt,
+      tz,
+    });
+    if (!valid.ok) throw new BookingError(valid.reason ?? "Horário indisponível.");
+
+    const overlap = await tx.get(
+      col
+        .where("professionalId", "==", professional.id)
+        .where("startAt", "<", endAt)
+        .where("endAt", ">", startAt)
+    );
+    const blocking = overlap.docs.filter((d) => {
+      if (d.id === input.appointmentId || d.id === newId) return false;
+      const status = (d.data() as Appointment).status;
+      return status !== "cancelled" && status !== "no_show";
+    });
+    if (blocking.length > 0) {
+      throw new BookingError("Horário indisponível: já existe um agendamento neste intervalo.");
+    }
+
+    if (oldRef.path === newRef.path) {
+      tx.update(oldRef, {
+        professionalId: professional.id,
+        serviceId: service.id,
+        startAt,
+        endAt,
+        cancelWindowDeadline,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      return;
+    }
+
+    tx.set(newRef, {
+      tenantId: tenant.id,
+      professionalId: professional.id,
+      serviceId: service.id,
+      customerId: current.customerId,
+      startAt,
+      endAt,
+      status: current.status === "pending" ? "pending" : "confirmed",
+      paymentStatus: current.paymentStatus ?? "pending",
+      price: current.price,
+      notes: current.notes ?? null,
+      cancelWindowDeadline,
+      createdBy: current.createdBy ?? "customer",
+      createdAt: current.createdAt ?? FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    tx.update(oldRef, {
+      status: "cancelled",
+      cancellationReason: "remarcado",
+      rescheduledTo: newId,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  });
+
+  await createNotification(db, tenant.id, {
+    type: "appointment",
+    title: "Agendamento remarcado",
+    body: `Agendamento remarcado para ${input.date} às ${input.time}.`,
+  });
+
+  return { ok: true, appointmentId: newId };
 }

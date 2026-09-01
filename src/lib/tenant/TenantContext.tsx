@@ -34,6 +34,7 @@ export interface CreateTenantInput {
   email?: string;
   instagram?: string;
   description?: string;
+  logoUrl?: string;
   segmentId?: string;
   slug: string;
   address?: {
@@ -139,6 +140,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         email: input.email,
         instagram: input.instagram,
         description: input.description,
+        logoUrl: input.logoUrl,
         address: input.address,
         segmentId: input.segmentId as never,
         planId: "ALL",

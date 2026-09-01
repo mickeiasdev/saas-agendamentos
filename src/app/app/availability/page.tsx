@@ -16,8 +16,13 @@ export default function AvailabilityPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [daysOff, setDaysOff] = useState("");
-  const [blockedDates, setBlockedDates] = useState("");
+  const [daysOff, setDaysOff] = useState<string[]>([]);
+  const [blockedDates, setBlockedDates] = useState<string[]>([]);
+  const [dayOffDraft, setDayOffDraft] = useState("");
+  const [blockedDraft, setBlockedDraft] = useState("");
+  const [vacStart, setVacStart] = useState("");
+  const [vacEnd, setVacEnd] = useState("");
+  const [vacReason, setVacReason] = useState("");
   const [excDate, setExcDate] = useState("");
   const [excStart, setExcStart] = useState("");
   const [excEnd, setExcEnd] = useState("");
@@ -68,8 +73,8 @@ export default function AvailabilityPage() {
     if (!activeTenantId || !selectedId) return;
     void ensureAvailability(activeTenantId, selectedId).then((a) => {
       setAvailability(a);
-      setDaysOff(a.daysOff.join("\n"));
-      setBlockedDates(a.blockedDates.join("\n"));
+      setDaysOff(a.daysOff ?? []);
+      setBlockedDates(a.blockedDates ?? []);
     });
   }, [activeTenantId, selectedId]);
 
@@ -79,6 +84,18 @@ export default function AvailabilityPage() {
       const workDays = prev.workDays.map((w) =>
         w.dayOfWeek === dayOfWeek ? { ...w, ...patch } : w
       );
+      return { ...prev, workDays };
+    });
+  }
+
+  function updateBreak(dayOfWeek: number, field: "start" | "end", value: string) {
+    setAvailability((prev) => {
+      if (!prev) return prev;
+      const workDays = prev.workDays.map((w) => {
+        if (w.dayOfWeek !== dayOfWeek) return w;
+        const current = w.breaks[0] ?? { start: "12:00", end: "13:00" };
+        return { ...w, breaks: [{ ...current, [field]: value }] };
+      });
       return { ...prev, workDays };
     });
   }
@@ -103,9 +120,9 @@ export default function AvailabilityPage() {
     try {
       await saveAvailability(activeTenantId, availability.professionalId, {
         workDays: availability.workDays,
-        daysOff: daysOff.split("\n").map((s) => s.trim()).filter(Boolean),
+        daysOff,
         vacations: availability.vacations,
-        blockedDates: blockedDates.split("\n").map((s) => s.trim()).filter(Boolean),
+        blockedDates,
         exceptions: availability.exceptions,
       });
       setSaved(true);
@@ -180,14 +197,43 @@ export default function AvailabilityPage() {
                   disabled={!w.enabled}
                   onChange={(e) => updateWorkDay(w.dayOfWeek, { endTime: e.target.value })}
                 />
-                <button
-                  type="button"
-                  onClick={() => toggleBreak(w.dayOfWeek)}
-                  disabled={!w.enabled}
-                  className="btn-secondary py-1.5 text-xs"
-                >
-                  {w.breaks.length > 0 ? "Remover intervalo" : "Adicionar intervalo 12h-13h"}
-                </button>
+                {w.breaks.length > 0 ? (
+                  <>
+                    <span className="text-xs text-slate-500">intervalo</span>
+                    <input
+                      type="time"
+                      className="input w-28"
+                      value={w.breaks[0].start}
+                      disabled={!w.enabled}
+                      onChange={(e) => updateBreak(w.dayOfWeek, "start", e.target.value)}
+                    />
+                    <span className="text-sm text-slate-500">até</span>
+                    <input
+                      type="time"
+                      className="input w-28"
+                      value={w.breaks[0].end}
+                      disabled={!w.enabled}
+                      onChange={(e) => updateBreak(w.dayOfWeek, "end", e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => toggleBreak(w.dayOfWeek)}
+                      disabled={!w.enabled}
+                      className="btn-secondary py-1.5 text-xs"
+                    >
+                      Remover intervalo
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => toggleBreak(w.dayOfWeek)}
+                    disabled={!w.enabled}
+                    className="btn-secondary py-1.5 text-xs"
+                  >
+                    Adicionar intervalo
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -195,49 +241,77 @@ export default function AvailabilityPage() {
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="card">
               <h2 className="mb-2 font-semibold text-slate-900">Folgas e bloqueios</h2>
-              <p className="mb-2 text-xs text-slate-500">
-                Uma data por linha, no formato AAAA-MM-DD (ex: 2025-12-25).
-              </p>
-              <div className="space-y-3">
+              <p className="mb-2 text-xs text-slate-500">Selecione a data no calendário.</p>
+              <div className="space-y-4">
                 <div>
                   <label className="label">Folgas</label>
-                  <textarea
-                    className="input"
-                    rows={3}
-                    value={daysOff}
-                    onChange={(e) => setDaysOff(e.target.value)}
-                    placeholder="2025-12-25"
-                  />
+                  <div className="flex gap-2">
+                    <input type="date" className="input" value={dayOffDraft} onChange={(e) => setDayOffDraft(e.target.value)} />
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => {
+                        if (!dayOffDraft || daysOff.includes(dayOffDraft)) return;
+                        setDaysOff((prev) => [...prev, dayOffDraft].sort());
+                        setDayOffDraft("");
+                      }}
+                    >
+                      Adicionar
+                    </button>
+                  </div>
+                  <ul className="mt-2 space-y-1">
+                    {daysOff.map((d) => (
+                      <li key={d} className="flex items-center justify-between text-sm">
+                        <span>{d}</span>
+                        <button type="button" className="text-red-600 hover:underline" onClick={() => setDaysOff((prev) => prev.filter((x) => x !== d))}>
+                          Remover
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
                 <div>
                   <label className="label">Bloqueios</label>
-                  <textarea
-                    className="input"
-                    rows={3}
-                    value={blockedDates}
-                    onChange={(e) => setBlockedDates(e.target.value)}
-                    placeholder="2025-12-31"
-                  />
+                  <div className="flex gap-2">
+                    <input type="date" className="input" value={blockedDraft} onChange={(e) => setBlockedDraft(e.target.value)} />
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => {
+                        if (!blockedDraft || blockedDates.includes(blockedDraft)) return;
+                        setBlockedDates((prev) => [...prev, blockedDraft].sort());
+                        setBlockedDraft("");
+                      }}
+                    >
+                      Adicionar
+                    </button>
+                  </div>
+                  <ul className="mt-2 space-y-1">
+                    {blockedDates.map((d) => (
+                      <li key={d} className="flex items-center justify-between text-sm">
+                        <span>{d}</span>
+                        <button type="button" className="text-red-600 hover:underline" onClick={() => setBlockedDates((prev) => prev.filter((x) => x !== d))}>
+                          Remover
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               </div>
             </div>
 
             <div className="card">
               <h2 className="mb-2 font-semibold text-slate-900">Férias</h2>
-              <p className="mb-3 text-xs text-slate-500">
-                Períodos em que o profissional não atende. Adicione no formato AAAA-MM-DD até AAAA-MM-DD.
-              </p>
+              <p className="mb-3 text-xs text-slate-500">Períodos em que o profissional não atende.</p>
               <div className="space-y-2">
-                {availability.vacations.map((v, i) => (
+                {availability.vacations.map((v) => (
                   <div key={v.id} className="flex items-center gap-2 text-sm">
-                    <span className="text-slate-700">{v.startDate} até {v.endDate}</span>
+                    <span className="text-slate-700">{v.startDate} até {v.endDate}{v.reason ? ` · ${v.reason}` : ""}</span>
                     <button
                       type="button"
                       onClick={() =>
                         setAvailability((prev) =>
-                          prev
-                            ? { ...prev, vacations: prev.vacations.filter((x) => x.id !== v.id) }
-                            : prev
+                          prev ? { ...prev, vacations: prev.vacations.filter((x) => x.id !== v.id) } : prev
                         )
                       }
                       className="text-sm text-red-600 hover:underline"
@@ -246,25 +320,30 @@ export default function AvailabilityPage() {
                     </button>
                   </div>
                 ))}
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <input type="date" className="input" value={vacStart} onChange={(e) => setVacStart(e.target.value)} />
+                  <input type="date" className="input" value={vacEnd} onChange={(e) => setVacEnd(e.target.value)} />
+                  <input className="input" placeholder="Motivo (opcional)" value={vacReason} onChange={(e) => setVacReason(e.target.value)} />
+                </div>
                 <button
                   type="button"
                   className="btn-secondary text-sm"
                   onClick={() => {
-                    const from = prompt("Início (AAAA-MM-DD):");
-                    const to = prompt("Fim (AAAA-MM-DD):");
-                    if (from && to) {
-                      setAvailability((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              vacations: [
-                                ...prev.vacations,
-                                { id: `v${Date.now()}`, startDate: from, endDate: to },
-                              ],
-                            }
-                          : prev
-                      );
-                    }
+                    if (!vacStart || !vacEnd) return;
+                    setAvailability((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            vacations: [
+                              ...prev.vacations,
+                              { id: `v${Date.now()}`, startDate: vacStart, endDate: vacEnd, reason: vacReason.trim() || undefined },
+                            ],
+                          }
+                        : prev
+                    );
+                    setVacStart("");
+                    setVacEnd("");
+                    setVacReason("");
                   }}
                 >
                   Adicionar período de férias

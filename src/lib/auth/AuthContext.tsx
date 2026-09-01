@@ -1,7 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   type User,
+  EmailAuthProvider,
   onAuthStateChanged,
+  reauthenticateWithCredential,
   sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
@@ -24,7 +26,7 @@ export interface AuthState {
   register: (email: string, password: string, displayName: string) => Promise<UserProfile>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
-  changePassword: (newPassword: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   verifyEmail: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -87,6 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (email: string, password: string, displayName: string) => {
       const cred = await createUserWithEmailAndPassword(getFirebaseAuth(), email, password);
       await updateProfile(cred.user, { displayName });
+      await sendEmailVerification(cred.user);
       await createProfile(cred.user.uid, email, displayName);
       const db = getFirebaseFirestore();
       const snap = await getDoc(doc(db, "users", cred.user.uid));
@@ -106,10 +109,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await sendPasswordResetEmail(getFirebaseAuth(), email);
   }, []);
 
-  const changePassword = useCallback(async (newPassword: string) => {
+  const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
     const auth = getFirebaseAuth();
-    if (!auth.currentUser) throw new Error("Usuário não autenticado");
-    await updatePassword(auth.currentUser, newPassword);
+    const current = auth.currentUser;
+    if (!current || !current.email) throw new Error("Usuário não autenticado");
+    const credential = EmailAuthProvider.credential(current.email, currentPassword);
+    await reauthenticateWithCredential(current, credential);
+    await updatePassword(current, newPassword);
   }, []);
 
   const verifyEmail = useCallback(async () => {

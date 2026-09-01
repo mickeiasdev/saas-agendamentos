@@ -13,6 +13,7 @@ import { listCategories } from "@/lib/repository/categories";
 import { listProfessionals } from "@/lib/repository/professionals";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ImageUpload } from "@/components/ui/ImageUpload";
 import { formatBRL } from "@/lib/utils/format";
 import type { Professional, Service } from "@/types";
 
@@ -234,30 +235,15 @@ export default function ServicesPage() {
               onChange={(e) => setForm({ ...form, description: e.target.value })}
             />
           </div>
-          <div>
-            <label className="label">URL da imagem</label>
-            <div className="flex items-center gap-3">
-              <input
-                type="url"
-                className="input flex-1"
-                value={form.imageUrl}
-                onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-                placeholder="https://.../servico.jpg"
-              />
-              {form.imageUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={form.imageUrl}
-                  alt="Prévia"
-                  className="h-12 w-12 rounded-lg object-cover"
-                  referrerPolicy="no-referrer"
-                />
-              )}
-            </div>
-            <p className="mt-1 text-xs text-slate-400">
-              Cole a URL de uma imagem (hospedada em Firebase Storage ou outro serviço).
-            </p>
-          </div>
+          {activeTenantId && (
+            <ImageUpload
+              tenantId={activeTenantId}
+              kind="services"
+              label="Imagem do serviço"
+              value={form.imageUrl}
+              onChange={(url) => setForm({ ...form, imageUrl: url })}
+            />
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="label">Preço (R$) *</label>

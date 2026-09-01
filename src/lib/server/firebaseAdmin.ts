@@ -47,3 +47,10 @@ export function getAdminFirestore(): Firestore | null {
   const app = getAdminApp();
   return app ? getFirestore(app) : null;
 }
+
+export const ADMIN_SDK_MISSING_MESSAGE =
+  "Firebase Admin SDK não configurado. Defina FIREBASE_SERVICE_ACCOUNT_JSON ou FIREBASE_PROJECT_ID + FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY.";
+
+export function adminSdkMissingResponse(status = 503): Response {
+  return Response.json({ error: ADMIN_SDK_MISSING_MESSAGE, ok: false }, { status });
+}

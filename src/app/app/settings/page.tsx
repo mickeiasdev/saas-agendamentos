@@ -8,6 +8,7 @@ import { useTenant } from "@/lib/tenant/TenantContext";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { can } from "@/lib/rbac/roles";
 import { getRoleForTenant } from "@/lib/rbac/membership";
+import { ImageUpload } from "@/components/ui/ImageUpload";
 import type { FaqItem, Testimonial, TenantBranding } from "@/types";
 
 const FONT_OPTIONS = [
@@ -56,21 +57,36 @@ export default function SettingsPage() {
   );
   const [testimonialDraft, setTestimonialDraft] = useState({ author: "", text: "", rating: 5 });
   const [faqDraft, setFaqDraft] = useState({ question: "", answer: "" });
-  const [passForm, setPassForm] = useState({ newPassword: "", confirm: "" });
+  const [passForm, setPassForm] = useState({ currentPassword: "", newPassword: "", confirm: "" });
   const [passError, setPassError] = useState("");
   const [passMsg, setPassMsg] = useState("");
   const [passSaving, setPassSaving] = useState(false);
   const [emailMsg, setEmailMsg] = useState("");
   const [emailSaving, setEmailSaving] = useState(false);
-
-  if (!activeTenant || !activeTenantId) return null;
+  const [company, setCompany] = useState({
+    name: activeTenant?.name ?? "",
+    tradeName: activeTenant?.tradeName ?? "",
+    cnpjCpf: activeTenant?.cnpjCpf ?? "",
+    phone: activeTenant?.phone ?? "",
+    whatsapp: activeTenant?.whatsapp ?? "",
+    email: activeTenant?.email ?? "",
+    instagram: activeTenant?.instagram ?? "",
+    description: activeTenant?.description ?? "",
+    street: activeTenant?.address?.street ?? "",
+    number: activeTenant?.address?.number ?? "",
+    complement: activeTenant?.address?.complement ?? "",
+    neighborhood: activeTenant?.address?.neighborhood ?? "",
+    city: activeTenant?.address?.city ?? "",
+    state: activeTenant?.address?.state ?? "",
+    zip: activeTenant?.address?.zip ?? "",
+  });
 
   const tenantId = activeTenantId;
   const tenant = activeTenant;
-  const role = getRoleForTenant(memberships, tenantId)?.role;
+  const role = tenantId ? getRoleForTenant(memberships, tenantId)?.role : undefined;
   const canManage = can(role, "settings.manage");
   const platformDomain = process.env.NEXT_PUBLIC_PLATFORM_DOMAIN ?? "minhaplataforma.com";
-  const publicUrl = `https://${activeTenant.slug}.${platformDomain}`;
+  const publicUrl = tenant ? `https://${tenant.slug}.${platformDomain}` : "";
 
   function moveSection(index: number, dir: -1 | 1) {
     setSectionOrder((prev) => {
@@ -84,7 +100,7 @@ export default function SettingsPage() {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    if (!canManage) return;
+    if (!canManage || !tenant || !tenantId) return;
     setSaving(true);
     setSaved(false);
     try {
@@ -106,8 +122,29 @@ export default function SettingsPage() {
         sectionOrder,
       };
       const db = getFirebaseFirestore();
-      const patch: Record<string, unknown> = { branding, updatedAt: serverTimestamp() };
-      if (logoUrl !== tenant.logoUrl) patch.logoUrl = logoUrl || null;
+      const patch: Record<string, unknown> = {
+        branding,
+        updatedAt: serverTimestamp(),
+        name: company.name.trim(),
+        tradeName: company.tradeName.trim() || null,
+        cnpjCpf: company.cnpjCpf.trim() || null,
+        phone: company.phone.trim() || null,
+        whatsapp: company.whatsapp.trim() || null,
+        email: company.email.trim() || null,
+        instagram: company.instagram.trim() || null,
+        description: company.description.trim() || null,
+        address: {
+          street: company.street.trim() || undefined,
+          number: company.number.trim() || undefined,
+          complement: company.complement.trim() || undefined,
+          neighborhood: company.neighborhood.trim() || undefined,
+          city: company.city.trim() || undefined,
+          state: company.state.trim() || undefined,
+          zip: company.zip.trim() || undefined,
+        },
+        logoUrl: logoUrl || null,
+        bannerUrl: bannerUrl || null,
+      };
       await updateDoc(doc(db, "tenants", tenantId), patch);
       setSaved(true);
       await refreshActiveTenant();
@@ -123,6 +160,17 @@ export default function SettingsPage() {
         <p className="text-sm text-slate-500">Personalização avançada do site público e dados da empresa.</p>
       </div>
 
+      {!tenant && (
+        <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+          Você ainda não criou uma empresa. A troca de senha está disponível abaixo.{" "}
+          <a href="/app/onboarding" className="font-medium underline">
+            Criar empresa
+          </a>
+        </div>
+      )}
+
+      {tenant && (
+      <>
       <div className="card">
         <h2 className="mb-3 font-semibold text-slate-900">Site público</h2>
         <p className="mb-2 text-sm text-slate-600">
@@ -137,7 +185,7 @@ export default function SettingsPage() {
           {publicUrl}
         </a>
         <p className="mt-2 text-xs text-slate-500">
-          No ambiente de preview local, acesse <code className="rounded bg-slate-100 px-1">/{activeTenant.slug}</code> na aplicação.
+           No ambiente de preview local, acesse <code className="rounded bg-slate-100 px-1">/{tenant.slug}</code> na aplicação.
         </p>
         <div className="mt-4 flex flex-wrap items-start gap-4">
           <div className="rounded-xl border border-slate-200 bg-white p-3">
@@ -157,7 +205,7 @@ export default function SettingsPage() {
                 const canvas = document.querySelector("canvas");
                 if (canvas) {
                   a.href = canvas.toDataURL("image/png");
-                  a.download = `qr-${activeTenant.slug}.png`;
+                   a.download = `qr-${tenant.slug}.png`;
                   a.click();
                 }
               }}
@@ -172,26 +220,22 @@ export default function SettingsPage() {
         <div className="card space-y-4">
           <h2 className="font-semibold text-slate-900">Identidade</h2>
           <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="label">Logo (URL)</label>
-              <input
-                className="input"
-                value={logoUrl}
-                disabled={!canManage}
-                placeholder="https://.../logo.png"
-                onChange={(e) => setLogoUrl(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="label">Banner (URL)</label>
-              <input
-                className="input"
-                value={bannerUrl}
-                disabled={!canManage}
-                placeholder="https://.../banner.jpg"
-                onChange={(e) => setBannerUrl(e.target.value)}
-              />
-            </div>
+            <ImageUpload
+              tenantId={tenantId!}
+              kind="logo"
+              label="Logo"
+              value={logoUrl}
+              disabled={!canManage}
+              onChange={setLogoUrl}
+            />
+            <ImageUpload
+              tenantId={tenantId!}
+              kind="banner"
+              label="Banner"
+              value={bannerUrl}
+              disabled={!canManage}
+              onChange={setBannerUrl}
+            />
           </div>
         </div>
 
@@ -490,44 +534,83 @@ export default function SettingsPage() {
             </div>
           )}
         </div>
-      </form>
 
-      <div className="card">
-        <h2 className="mb-3 font-semibold text-slate-900">Dados da empresa</h2>
-        <dl className="grid gap-3 text-sm sm:grid-cols-2">
+      <div className="card space-y-4">
+        <h2 className="font-semibold text-slate-900">Dados da empresa</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <dt className="text-slate-500">Nome</dt>
-            <dd className="font-medium text-slate-900">{activeTenant.name}</dd>
+            <label className="label">Nome</label>
+            <input className="input" disabled={!canManage} value={company.name} onChange={(e) => setCompany({ ...company, name: e.target.value })} />
           </div>
           <div>
-            <dt className="text-slate-500">Nome fantasia</dt>
-            <dd className="font-medium text-slate-900">{activeTenant.tradeName ?? "-"}</dd>
+            <label className="label">Nome fantasia</label>
+            <input className="input" disabled={!canManage} value={company.tradeName} onChange={(e) => setCompany({ ...company, tradeName: e.target.value })} />
           </div>
           <div>
-            <dt className="text-slate-500">CPF/CNPJ</dt>
-            <dd className="font-medium text-slate-900">{activeTenant.cnpjCpf ?? "-"}</dd>
+            <label className="label">CPF/CNPJ</label>
+            <input className="input" disabled={!canManage} value={company.cnpjCpf} onChange={(e) => setCompany({ ...company, cnpjCpf: e.target.value })} />
           </div>
           <div>
-            <dt className="text-slate-500">Telefone / WhatsApp</dt>
-            <dd className="font-medium text-slate-900">
-              {activeTenant.phone ?? "-"} {activeTenant.whatsapp ? `/ ${activeTenant.whatsapp}` : ""}
-            </dd>
+            <label className="label">Telefone</label>
+            <input className="input" disabled={!canManage} value={company.phone} onChange={(e) => setCompany({ ...company, phone: e.target.value })} />
           </div>
           <div>
-            <dt className="text-slate-500">Plano</dt>
-            <dd className="font-medium text-slate-900">{activeTenant.planId}</dd>
+            <label className="label">WhatsApp</label>
+            <input className="input" disabled={!canManage} value={company.whatsapp} onChange={(e) => setCompany({ ...company, whatsapp: e.target.value })} />
           </div>
           <div>
-            <dt className="text-slate-500">Assinatura</dt>
-            <dd className="font-medium text-slate-900">{activeTenant.subscriptionStatus}</dd>
+            <label className="label">E-mail</label>
+            <input type="email" className="input" disabled={!canManage} value={company.email} onChange={(e) => setCompany({ ...company, email: e.target.value })} />
           </div>
-        </dl>
+          <div>
+            <label className="label">Instagram</label>
+            <input className="input" disabled={!canManage} value={company.instagram} onChange={(e) => setCompany({ ...company, instagram: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">CEP</label>
+            <input className="input" disabled={!canManage} value={company.zip} onChange={(e) => setCompany({ ...company, zip: e.target.value })} />
+          </div>
+        </div>
+        <div>
+          <label className="label">Descrição</label>
+          <textarea className="input" rows={2} disabled={!canManage} value={company.description} onChange={(e) => setCompany({ ...company, description: e.target.value })} />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="label">Rua</label>
+            <input className="input" disabled={!canManage} value={company.street} onChange={(e) => setCompany({ ...company, street: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Número</label>
+            <input className="input" disabled={!canManage} value={company.number} onChange={(e) => setCompany({ ...company, number: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Complemento</label>
+            <input className="input" disabled={!canManage} value={company.complement} onChange={(e) => setCompany({ ...company, complement: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Bairro</label>
+            <input className="input" disabled={!canManage} value={company.neighborhood} onChange={(e) => setCompany({ ...company, neighborhood: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Cidade</label>
+            <input className="input" disabled={!canManage} value={company.city} onChange={(e) => setCompany({ ...company, city: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Estado</label>
+            <input className="input" maxLength={2} disabled={!canManage} value={company.state} onChange={(e) => setCompany({ ...company, state: e.target.value.toUpperCase() })} />
+          </div>
+        </div>
+        <p className="text-xs text-slate-500">Plano {tenant.planId} · assinatura {tenant.subscriptionStatus}.</p>
       </div>
+      </form>
+      </>
+      )}
 
       <div className="card space-y-4">
         <div>
           <h2 className="font-semibold text-slate-900">Conta e segurança</h2>
-          <p className="text-sm text-slate-500">Alteração de senha e verificação de e-mail.</p>
+          <p className="text-sm text-slate-500">Alteração de senha e verificação de e-mail. Disponível mesmo sem empresa cadastrada.</p>
         </div>
 
         {user && !user.emailVerified && (
@@ -565,15 +648,19 @@ export default function SettingsPage() {
               setPassError("A senha deve ter pelo menos 6 caracteres.");
               return;
             }
-            if (passForm.newPassword !== passForm.confirm) {
-              setPassError("As senhas não coincidem.");
-              return;
-            }
-            setPassSaving(true);
-            try {
-              await changePassword(passForm.newPassword);
-              setPassForm({ newPassword: "", confirm: "" });
-              setPassMsg("Senha alterada com sucesso.");
+            if (!passForm.currentPassword) {
+                setPassError("Informe a senha atual para reautenticar.");
+                return;
+              }
+              if (passForm.newPassword !== passForm.confirm) {
+                setPassError("As senhas não coincidem.");
+                return;
+              }
+              setPassSaving(true);
+              try {
+                await changePassword(passForm.currentPassword, passForm.newPassword);
+                setPassForm({ currentPassword: "", newPassword: "", confirm: "" });
+                setPassMsg("Senha alterada com sucesso.");
             } catch (err) {
               setPassError((err as Error).message ?? "Erro ao alterar a senha.");
             } finally {
@@ -581,12 +668,24 @@ export default function SettingsPage() {
             }
           }}
         >
+          <div>
+            <label className="label">Senha atual</label>
+            <input
+              type="password"
+              className="input"
+              required
+              autoComplete="current-password"
+              value={passForm.currentPassword}
+              onChange={(e) => setPassForm({ ...passForm, currentPassword: e.target.value })}
+            />
+          </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="label">Nova senha</label>
               <input
                 type="password"
                 className="input"
+                autoComplete="new-password"
                 value={passForm.newPassword}
                 onChange={(e) => setPassForm({ ...passForm, newPassword: e.target.value })}
               />
@@ -596,6 +695,7 @@ export default function SettingsPage() {
               <input
                 type="password"
                 className="input"
+                autoComplete="new-password"
                 value={passForm.confirm}
                 onChange={(e) => setPassForm({ ...passForm, confirm: e.target.value })}
               />

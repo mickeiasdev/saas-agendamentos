@@ -5,6 +5,7 @@ import { useTenant } from "@/lib/tenant/TenantContext";
 import {
   createAppointment,
   listAppointments,
+  rescheduleAppointment,
   updateAppointmentStatus,
 } from "@/lib/repository/appointments";
 import { listCustomers } from "@/lib/repository/customers";
@@ -42,6 +43,7 @@ export default function AppointmentsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [rescheduleTarget, setRescheduleTarget] = useState<Appointment | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -52,6 +54,13 @@ export default function AppointmentsPage() {
     date: "",
     time: "09:00",
     notes: "",
+  });
+
+  const [rescheduleForm, setRescheduleForm] = useState({
+    professionalId: "",
+    serviceId: "",
+    date: "",
+    time: "09:00",
   });
 
   const load = useCallback(async () => {
@@ -122,6 +131,53 @@ export default function AppointmentsPage() {
     await updateAppointmentStatus(activeTenantId, a.id, status);
     await load();
   }
+
+  function openReschedule(a: Appointment) {
+    const start = toDateValue(a.startAt);
+    setRescheduleTarget(a);
+    setRescheduleForm({
+      professionalId: a.professionalId,
+      serviceId: a.serviceId,
+      date: start.toISOString().slice(0, 10),
+      time: start.toTimeString().slice(0, 5),
+    });
+    setError("");
+  }
+
+  function toDateValue(v: Appointment["startAt"]): Date {
+    return v && typeof v === "object" && "toDate" in v && typeof v.toDate === "function"
+      ? v.toDate()
+      : new Date(String(v));
+  }
+
+  async function handleReschedule(e: React.FormEvent) {
+    e.preventDefault();
+    if (!activeTenantId || !rescheduleTarget) return;
+    setError("");
+    setSaving(true);
+    try {
+      const service = services.find((s) => s.id === rescheduleForm.serviceId);
+      if (!service) throw new Error("Selecione um serviço.");
+      const startAt = new Date(`${rescheduleForm.date}T${rescheduleForm.time}:00`);
+      await rescheduleAppointment({
+        tenantId: activeTenantId,
+        appointmentId: rescheduleTarget.id,
+        professionalId: rescheduleForm.professionalId,
+        serviceId: rescheduleForm.serviceId,
+        startAt,
+        endAt: addMinutes(startAt, service.durationMinutes),
+      });
+      setRescheduleTarget(null);
+      await load();
+    } catch (err) {
+      setError((err as Error).message ?? "Erro ao remarcar.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const canReschedule = (a: Appointment) =>
+    a.status !== "cancelled" && a.status !== "completed" && a.status !== "no_show";
 
   return (
     <div className="space-y-6">
@@ -194,7 +250,17 @@ export default function AppointmentsPage() {
                       ))}
                     </select>
                   </td>
-                  <td className="px-4 py-3 text-right text-xs text-slate-400">{a.id.slice(0, 6)}</td>
+                  <td className="px-4 py-3 text-right">
+                    {canReschedule(a) && (
+                      <button
+                        type="button"
+                        className="text-xs font-medium text-brand-600 hover:underline"
+                        onClick={() => openReschedule(a)}
+                      >
+                        Remarcar
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -296,6 +362,84 @@ export default function AppointmentsPage() {
             </button>
             <button type="submit" className="btn-primary" disabled={saving}>
               {saving ? "Criando..." : "Criar agendamento"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        open={!!rescheduleTarget}
+        onClose={() => setRescheduleTarget(null)}
+        title="Remarcar agendamento"
+      >
+        <form onSubmit={handleReschedule} className="space-y-4">
+          <p className="text-sm text-slate-600">
+            Cliente: <b>{rescheduleTarget ? customerName(rescheduleTarget.customerId) : ""}</b>
+          </p>
+          <div>
+            <label className="label">Serviço *</label>
+            <select
+              required
+              className="input"
+              value={rescheduleForm.serviceId}
+              onChange={(e) => setRescheduleForm({ ...rescheduleForm, serviceId: e.target.value })}
+            >
+              <option value="">Selecione...</option>
+              {services.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} ({s.durationMinutes} min)
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="label">Profissional *</label>
+            <select
+              required
+              className="input"
+              value={rescheduleForm.professionalId}
+              onChange={(e) => setRescheduleForm({ ...rescheduleForm, professionalId: e.target.value })}
+            >
+              <option value="">Selecione...</option>
+              {professionals.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="label">Data *</label>
+              <input
+                required
+                type="date"
+                className="input"
+                value={rescheduleForm.date}
+                onChange={(e) => setRescheduleForm({ ...rescheduleForm, date: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="label">Horário *</label>
+              <input
+                required
+                type="time"
+                className="input"
+                value={rescheduleForm.time}
+                onChange={(e) => setRescheduleForm({ ...rescheduleForm, time: e.target.value })}
+              />
+            </div>
+          </div>
+          <p className="rounded-lg bg-slate-50 p-2 text-xs text-slate-500">
+            A disponibilidade é validada na transação. Horários ocupados serão recusados.
+          </p>
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          <div className="flex justify-end gap-3">
+            <button type="button" onClick={() => setRescheduleTarget(null)} className="btn-secondary">
+              Cancelar
+            </button>
+            <button type="submit" className="btn-primary" disabled={saving}>
+              {saving ? "Remarcando..." : "Confirmar remarcação"}
             </button>
           </div>
         </form>

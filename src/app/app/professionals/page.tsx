@@ -12,6 +12,7 @@ import {
 import { listServices } from "@/lib/repository/services";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ImageUpload } from "@/components/ui/ImageUpload";
 import type { Professional, Service } from "@/types";
 
 const COLORS = ["#6366f1", "#0ea5e9", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6"];
@@ -216,37 +217,16 @@ export default function ProfessionalsPage() {
               onChange={(e) => setForm({ ...form, description: e.target.value })}
             />
           </div>
-          <div>
-            <label className="label">URL da foto</label>
-            <div className="flex items-center gap-3">
-              <input
-                type="url"
-                className="input flex-1"
-                value={form.photoUrl}
-                onChange={(e) => setForm({ ...form, photoUrl: e.target.value })}
-                placeholder="https://.../foto.jpg"
-              />
-              {form.photoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={form.photoUrl}
-                  alt="Prévia"
-                  className="h-12 w-12 rounded-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                <span
-                  className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-bold text-white"
-                  style={{ backgroundColor: form.color }}
-                >
-                  {form.name.charAt(0).toUpperCase() || "?"}
-                </span>
-              )}
-            </div>
-            <p className="mt-1 text-xs text-slate-400">
-              Cole a URL de uma foto (hospedada em Firebase Storage ou outro serviço).
-            </p>
-          </div>
+          {activeTenantId && (
+            <ImageUpload
+              tenantId={activeTenantId}
+              kind="professionals"
+              label="Foto do profissional"
+              round
+              value={form.photoUrl}
+              onChange={(url) => setForm({ ...form, photoUrl: url })}
+            />
+          )}
           <div>
             <label className="label">Cor</label>
             <div className="flex gap-2">

@@ -11,16 +11,23 @@ Nunca commite `.env.local` (está no `.gitignore`).
 | `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | Sim | Pública | `projeto.appspot.com` |
 | `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Sim | Pública | Sender ID |
 | `NEXT_PUBLIC_FIREBASE_APP_ID` | Sim | Pública | App ID |
-| `FIREBASE_SERVICE_ACCOUNT_JSON` | Não (só API routes) | Server-only | JSON da service account (Admin SDK) |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | Sim para APIs públicas (opção A) | Server-only | JSON da service account (Admin SDK) |
+| `FIREBASE_PROJECT_ID` | Sim para APIs públicas (opção B) | Server-only | Project ID da service account |
+| `FIREBASE_CLIENT_EMAIL` | Sim para APIs públicas (opção B) | Server-only | E-mail da service account |
+| `FIREBASE_PRIVATE_KEY` | Sim para APIs públicas (opção B) | Server-only | Chave privada (mantenha `\n` escapados) |
 | `NEXT_PUBLIC_PLATFORM_DOMAIN` | Não | Pública | Domínio base dos sites públicos (default `minhaplataforma.com`) |
+
+O Admin SDK aceita **opção A** (`FIREBASE_SERVICE_ACCOUNT_JSON`) **ou** **opção B**
+(`FIREBASE_PROJECT_ID` + `FIREBASE_CLIENT_EMAIL` + `FIREBASE_PRIVATE_KEY`).
+Sem uma das duas, as rotas `/api/public/*` retornam erro 503 — nunca dados fake.
 
 ## Segurança
 
 - `NEXT_PUBLIC_*` é visível ao browser por definição — nunca coloque segredos nela.
 - A API key do Firebase **não é um segredo**: a segurança real está nas
   **Firebase Security Rules** (ver SECURITY.md).
-- Variáveis server-only (`FIREBASE_SERVICE_ACCOUNT_JSON`) nunca devem ser prefixadas
-  com `NEXT_PUBLIC_`.
+- Variáveis server-only (`FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_PRIVATE_KEY`,
+  `FIREBASE_CLIENT_EMAIL`) nunca devem ser prefixadas com `NEXT_PUBLIC_`.
 
 ## Em produção
 

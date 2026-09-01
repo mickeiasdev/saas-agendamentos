@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAdminFirestore } from "@/lib/server/firebaseAdmin";
-import { getMockSiteData } from "@/lib/server/mockTenant";
+import { adminSdkMissingResponse, getAdminFirestore } from "@/lib/server/firebaseAdmin";
 import type { Professional, ProfessionalAvailability, Service, Tenant } from "@/types";
 
 const DAY_LABELS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
@@ -73,12 +72,7 @@ function buildSchedule(availabilities: ProfessionalAvailability[]): ScheduleEntr
 export async function GET(req: NextRequest, { params }: { params: { slug: string } }) {
   const db = getAdminFirestore();
   if (!db) {
-    const slug = (params.slug ?? "").trim().toLowerCase();
-    if (!slug) {
-      return Response.json({ error: "Parâmetro inválido." }, { status: 400 });
-    }
-    const mock = getMockSiteData(slug);
-    return Response.json(mock);
+    return adminSdkMissingResponse();
   }
 
   const slug = (params.slug ?? "").trim().toLowerCase();

@@ -32,7 +32,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/app/financial", label: "Financeiro", permission: "financial.manage" },
   { href: "/app/reviews", label: "Avaliações", permission: "review.manage" },
   { href: "/app/reports", label: "Relatórios", permission: "reports.view" },
-  { href: "/app/settings", label: "Configurações", permission: "settings.manage" },
+  { href: "/app/settings", label: "Configurações" },
   { href: "/app/master", label: "Painel Master", permission: "master.view" },
 ];
 
@@ -59,7 +59,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   if (!user) return null;
 
   const isOnboarding = pathname === "/app/onboarding";
-  if (!activeTenant && !isOnboarding) {
+  const isSettings = pathname === "/app/settings";
+  if (!activeTenant && !isOnboarding && !isSettings) {
     router.replace("/app/onboarding");
     return null;
   }
