@@ -72,8 +72,11 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       const list = snap.docs.map((d) => d.data() as TenantUser);
       setMemberships(list);
       const saved = profile?.activeTenantId;
-      const initial = saved && list.some((m) => m.tenantId === saved) ? saved : list[0]?.tenantId ?? null;
-      setActiveTenantId(initial);
+      setActiveTenantId((current) => {
+        if (current && list.some((m) => m.tenantId === current)) return current;
+        if (saved && list.some((m) => m.tenantId === saved)) return saved;
+        return list[0]?.tenantId ?? null;
+      });
       setLoading(false);
     });
     return () => unsub();

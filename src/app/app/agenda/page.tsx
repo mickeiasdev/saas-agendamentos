@@ -6,7 +6,7 @@ import { useTenant } from "@/lib/tenant/TenantContext";
 import { listAppointments } from "@/lib/repository/appointments";
 import { listProfessionals } from "@/lib/repository/professionals";
 import { listServices } from "@/lib/repository/services";
-import { sameDay, toDate } from "@/lib/utils/format";
+import { dateKey, sameDay, toDate } from "@/lib/utils/format";
 import type { Appointment, Professional, Service } from "@/types";
 
 type ViewMode = "day" | "week" | "month";
@@ -20,31 +20,45 @@ const STATUS_BADGE: Record<string, string> = {
   no_show: "bg-slate-200 text-slate-600",
 };
 
+const STATUS_LABEL: Record<string, string> = {
+  pending: "Pendente",
+  confirmed: "Confirmado",
+  in_progress: "Em andamento",
+  completed: "Concluído",
+  cancelled: "Cancelado",
+  no_show: "Não compareceu",
+};
+
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 7);
+const GRID_START_MIN = HOURS[0] * 60;
+const GRID_END_MIN = (HOURS[HOURS.length - 1] + 1) * 60;
+const PX_PER_MINUTE = 1.2;
 
 function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
 function startOfWeek(d: Date): Date {
-  const x = startOfDay(d);
-  const day = (x.getDay() + 6) % 7;
-  x.setDate(x.getDate() - day);
-  return x;
+  const day = startOfDay(d);
+  const mondayOffset = (day.getDay() + 6) % 7;
+  return new Date(day.getFullYear(), day.getMonth(), day.getDate() - mondayOffset);
 }
 
 function addDays(d: Date, n: number): Date {
-  const x = new Date(d);
-  x.setDate(x.getDate() + n);
-  return x;
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 }
 
 function addMonths(d: Date, n: number): Date {
-  return new Date(d.getFullYear(), d.getMonth() + n, d.getDate());
+  return new Date(d.getFullYear(), d.getMonth() + n, 1);
 }
 
 function minutesFromMidnight(d: Date): number {
   return d.getHours() * 60 + d.getMinutes();
+}
+
+function daysOfMonth(d: Date): Date[] {
+  const count = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  return Array.from({ length: count }, (_, i) => new Date(d.getFullYear(), d.getMonth(), i + 1));
 }
 
 export default function AgendaPage() {
@@ -107,8 +121,8 @@ export default function AgendaPage() {
 
   function step(dir: -1 | 1) {
     setAnchor((current) => {
-      if (view === "day") return addDays(current, dir);
-      if (view === "week") return addDays(current, dir * 7);
+      if (view === "day") return addDays(startOfDay(current), dir);
+      if (view === "week") return addDays(startOfWeek(current), dir * 7);
       return addMonths(current, dir);
     });
   }
@@ -119,8 +133,6 @@ export default function AgendaPage() {
       : view === "week"
         ? `${startOfWeek(anchor).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} — ${addDays(startOfWeek(anchor), 6).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}`
         : anchor.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-
-  if (loading) return <p className="text-slate-500">Carregando...</p>;
 
   return (
     <div className="space-y-6">
@@ -184,9 +196,9 @@ export default function AgendaPage() {
           onChange={(e) => setFilterStatus(e.target.value)}
         >
           <option value="all">Todos os status</option>
-          {Object.entries(STATUS_BADGE).map(([key]) => (
+          {Object.entries(STATUS_LABEL).map(([key, label]) => (
             <option key={key} value={key}>
-              {key}
+              {label}
             </option>
           ))}
         </select>
@@ -195,7 +207,9 @@ export default function AgendaPage() {
         </Link>
       </div>
 
-      {view === "month" ? (
+      {loading ? (
+        <p className="text-slate-500">Carregando...</p>
+      ) : view === "month" ? (
         <>
           <div className="card hidden p-4 md:block">
             <MonthView anchor={anchor} appointments={filtered} nameOf={nameOf} />
@@ -237,7 +251,9 @@ function AppointmentCard({
       <div className="mt-1 text-sm text-slate-700">{nameOf(a.serviceId, "service")}</div>
       <div className="text-xs text-slate-500">{nameOf(a.professionalId, "professional")}</div>
       <div className="mt-2">
-        <span className={`badge ${STATUS_BADGE[a.status] ?? "bg-slate-100 text-slate-600"}`}>{a.status}</span>
+        <span className={`badge ${STATUS_BADGE[a.status] ?? "bg-slate-100 text-slate-600"}`}>
+          {STATUS_LABEL[a.status] ?? a.status}
+        </span>
       </div>
     </div>
   );
@@ -259,16 +275,15 @@ function MobileCards({
       ? [startOfDay(anchor)]
       : view === "week"
         ? Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(anchor), i))
-        : Array.from(
-            { length: new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0).getDate() },
-            (_, i) => new Date(anchor.getFullYear(), anchor.getMonth(), i + 1)
-          );
+        : daysOfMonth(anchor);
   return (
     <div className="space-y-4">
       {days.map((d) => {
-        const items = appointments.filter((a) => sameDay(toDate(a.startAt), d));
+        const items = appointments
+          .filter((a) => sameDay(toDate(a.startAt), d))
+          .sort((a, b) => toDate(a.startAt).getTime() - toDate(b.startAt).getTime());
         return (
-          <div key={d.toISOString()} className="space-y-2">
+          <div key={dateKey(d)} className="space-y-2">
             <div className="text-xs font-semibold uppercase text-slate-500">
               {d.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit" })}
             </div>
@@ -295,35 +310,36 @@ function TimeGrid({
   view: ViewMode;
   anchor: Date;
 }) {
-  const days = view === "day" ? [startOfDay(anchor)] : Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(anchor), i));
-  const startMin = HOURS[0] * 60;
-  const endMin = (HOURS[HOURS.length - 1] + 1) * 60;
-  const height = (endMin - startMin) * 1.1;
+  const days =
+    view === "day"
+      ? [startOfDay(anchor)]
+      : Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(anchor), i));
+  const height = (GRID_END_MIN - GRID_START_MIN) * PX_PER_MINUTE;
 
   return (
     <div className="card overflow-x-auto p-0">
-      <div className="min-w-[640px]">
+      <div className={view === "week" ? "min-w-[720px]" : "min-w-[480px]"}>
         <div
           className="grid border-b border-slate-200 bg-slate-50"
-          style={{ gridTemplateColumns: `64px repeat(${days.length}, minmax(0, 1fr))` }}
+          style={{ gridTemplateColumns: `56px repeat(${days.length}, minmax(0, 1fr))` }}
         >
           <div />
           {days.map((d) => (
-            <div key={d.toISOString()} className="px-2 py-2 text-center text-xs font-semibold uppercase text-slate-500">
+            <div key={dateKey(d)} className="px-2 py-2 text-center text-xs font-semibold uppercase text-slate-500">
               {d.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" })}
             </div>
           ))}
         </div>
         <div
           className="grid"
-          style={{ gridTemplateColumns: `64px repeat(${days.length}, minmax(0, 1fr))` }}
+          style={{ gridTemplateColumns: `56px repeat(${days.length}, minmax(0, 1fr))` }}
         >
           <div className="relative" style={{ height }}>
             {HOURS.map((h) => (
               <div
                 key={h}
-                className="absolute right-2 text-[10px] text-slate-400"
-                style={{ top: (h * 60 - startMin) * 1.1 }}
+                className="absolute right-2 -translate-y-1/2 text-[10px] text-slate-400"
+                style={{ top: (h * 60 - GRID_START_MIN) * PX_PER_MINUTE }}
               >
                 {String(h).padStart(2, "0")}:00
               </div>
@@ -332,24 +348,27 @@ function TimeGrid({
           {days.map((d) => {
             const items = appointments.filter((a) => sameDay(toDate(a.startAt), d));
             return (
-              <div key={d.toISOString()} className="relative border-l border-slate-100" style={{ height }}>
+              <div key={dateKey(d)} className="relative border-l border-slate-100" style={{ height }}>
                 {HOURS.map((h) => (
                   <div
                     key={h}
                     className="absolute inset-x-0 border-t border-slate-100"
-                    style={{ top: (h * 60 - startMin) * 1.1 }}
+                    style={{ top: (h * 60 - GRID_START_MIN) * PX_PER_MINUTE }}
                   />
                 ))}
                 {items.map((a) => {
                   const start = toDate(a.startAt);
                   const end = toDate(a.endAt);
-                  const top = (minutesFromMidnight(start) - startMin) * 1.1;
-                  const h = Math.max((minutesFromMidnight(end) - minutesFromMidnight(start)) * 1.1, 28);
+                  const startMin = Math.max(minutesFromMidnight(start), GRID_START_MIN);
+                  const endMin = Math.min(minutesFromMidnight(end), GRID_END_MIN);
+                  if (endMin <= GRID_START_MIN || startMin >= GRID_END_MIN) return null;
+                  const top = (startMin - GRID_START_MIN) * PX_PER_MINUTE;
+                  const blockHeight = Math.max((endMin - startMin) * PX_PER_MINUTE, 24);
                   return (
                     <div
                       key={a.id}
                       className="absolute inset-x-1 overflow-hidden rounded bg-brand-50 px-1 py-0.5 text-[10px] text-brand-800"
-                      style={{ top, height: h }}
+                      style={{ top, height: blockHeight }}
                       title={`${nameOf(a.serviceId, "service")} · ${nameOf(a.professionalId, "professional")}`}
                     >
                       <div className="font-semibold">
@@ -401,7 +420,7 @@ function MonthView({
           const inMonth = d.getMonth() === month;
           return (
             <div
-              key={d.toISOString()}
+              key={dateKey(d)}
               className={`min-h-20 rounded-lg border p-1 ${
                 inMonth ? "border-slate-200 bg-white" : "border-slate-100 bg-slate-50"
               }`}

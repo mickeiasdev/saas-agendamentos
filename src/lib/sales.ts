@@ -1,3 +1,4 @@
+import { dateKey } from "@/lib/utils/format";
 import type { Product, Sale, SaleItem } from "@/types";
 
 /**
@@ -101,7 +102,8 @@ export function saleToFinancialEntry(sale: Sale): {
   sourceId: string;
   sourceType: "product";
 } {
-  const date = sale.createdAt instanceof Date ? sale.createdAt.toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+  const created = sale.createdAt instanceof Date ? sale.createdAt : new Date();
+  const date = dateKey(created);
   return {
     type: "income",
     category: "products",

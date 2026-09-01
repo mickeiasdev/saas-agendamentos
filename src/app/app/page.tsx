@@ -8,7 +8,7 @@ import { listServices } from "@/lib/repository/services";
 import { listProfessionals } from "@/lib/repository/professionals";
 import { listCustomers } from "@/lib/repository/customers";
 import { formatBRL, formatDateTime } from "@/lib/utils/format";
-import type { Appointment } from "@/types";
+import type { Appointment, Professional, Service } from "@/types";
 
 const STATUS_LABEL: Record<string, string> = {
   pending: "Pendente",
@@ -22,6 +22,8 @@ const STATUS_LABEL: Record<string, string> = {
 export default function DashboardPage() {
   const { activeTenant, activeTenantId } = useTenant();
   const [todayAppointments, setTodayAppointments] = useState<Appointment[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [stats, setStats] = useState({ services: 0, professionals: 0, customers: 0 });
 
   useEffect(() => {
@@ -30,17 +32,20 @@ export default function DashboardPage() {
     start.setHours(0, 0, 0, 0);
     const end = new Date(start);
     end.setDate(end.getDate() + 1);
+    end.setMilliseconds(end.getMilliseconds() - 1);
 
     void Promise.all([
       listAppointments(activeTenantId, { from: start, to: end }),
       listServices(activeTenantId),
       listProfessionals(activeTenantId),
-      listCustomers(activeTenantId, { pageSize: 1 }),
-    ]).then(([appointments, services, professionals, customers]) => {
+      listCustomers(activeTenantId, { pageSize: 500 }),
+    ]).then(([appointments, svcs, pros, customers]) => {
       setTodayAppointments(appointments);
+      setServices(svcs);
+      setProfessionals(pros);
       setStats({
-        services: services.length,
-        professionals: professionals.length,
+        services: svcs.length,
+        professionals: pros.length,
         customers: customers.items.length,
       });
     });
@@ -94,7 +99,9 @@ export default function DashboardPage() {
                     {formatDateTime(a.startAt)}
                   </div>
                   <div className="text-xs text-slate-500">
-                    {a.serviceId} · {a.professionalId}
+                    {services.find((s) => s.id === a.serviceId)?.name ?? a.serviceId}
+                    {" · "}
+                    {professionals.find((p) => p.id === a.professionalId)?.name ?? a.professionalId}
                   </div>
                 </div>
                 <div className="flex items-center gap-3">

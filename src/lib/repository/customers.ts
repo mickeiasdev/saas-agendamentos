@@ -10,7 +10,6 @@ import {
   serverTimestamp,
   startAfter,
   updateDoc,
-  where,
   type QueryDocumentSnapshot,
 } from "firebase/firestore";
 import { getFirebaseFirestore } from "@/lib/firebase/client";
@@ -80,23 +79,23 @@ export async function upsertCustomer(
   id: string | undefined,
   input: CreateCustomerInput
 ): Promise<string> {
-  const base = {
+  const fields = {
     ...input,
     tags: input.tags ?? [],
-    totalSpent: 0,
-    visitCount: 0,
   };
   if (id) {
     const ref = doc(collectionFor(tenantId), id);
     const snap = await getDoc(ref);
     if (snap.exists()) {
-      await updateDoc(ref, { ...base, updatedAt: serverTimestamp() });
+      await updateDoc(ref, { ...fields, updatedAt: serverTimestamp() });
       return id;
     }
   }
   const docRef = await addDoc(collectionFor(tenantId), {
-    ...base,
+    ...fields,
     tenantId,
+    totalSpent: 0,
+    visitCount: 0,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });

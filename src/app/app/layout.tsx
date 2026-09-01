@@ -32,6 +32,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/app/financial", label: "Financeiro", permission: "financial.manage" },
   { href: "/app/reviews", label: "Avaliações", permission: "review.manage" },
   { href: "/app/reports", label: "Relatórios", permission: "reports.view" },
+  { href: "/app/notifications", label: "Notificações", permission: "notification.view" },
   { href: "/app/settings", label: "Configurações" },
   { href: "/app/master", label: "Painel Master", permission: "master.view" },
 ];
@@ -104,7 +105,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         )}
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
           {visibleItems.map((item) => {
-            const active = pathname === item.href || pathname.startsWith(item.href + "/");
+            const active =
+              item.href === "/app"
+                ? pathname === "/app"
+                : pathname === item.href || pathname.startsWith(item.href + "/");
             return (
               <Link
                 key={item.href}
@@ -186,7 +190,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   onClick={() => setMenuOpen(false)}
                   className={cn(
                     "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium",
-                    pathname === item.href
+                    (item.href === "/app"
+                      ? pathname === "/app"
+                      : pathname === item.href || pathname.startsWith(item.href + "/"))
                       ? "bg-brand-50 text-brand-700"
                       : "text-slate-600 hover:bg-slate-50"
                   )}

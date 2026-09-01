@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { generateSlots } from "../availability/engine";
 import type {
   Appointment,
@@ -175,30 +175,34 @@ describe("generateSlots", () => {
   });
 
   it("não gera slots no passado para hoje", () => {
-    const availability: ProfessionalAvailability = {
-      ...baseAvailability,
-      workDays: [
-        {
-          dayOfWeek: new Date().getDay() as never,
-          enabled: true,
-          startTime: "00:00",
-          endTime: "23:59",
-          breaks: [],
-        },
-      ],
-    };
-    const today = new Date();
-    const dateKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-    const slots = generateSlots({
-      availability,
-      serviceDurationMinutes: 60,
-      appointments: [],
-      holidays: [],
-      slotIntervalMinutes: 60,
-      date: dateKey,
-    });
-    const available = slots.filter((s) => s.available);
-    expect(available.length).toBeGreaterThan(0);
-    expect(available.every((s) => s.start.getTime() > Date.now())).toBe(true);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2025, 4, 5, 10, 0, 0, 0));
+    try {
+      const availability: ProfessionalAvailability = {
+        ...baseAvailability,
+        workDays: [
+          {
+            dayOfWeek: 1,
+            enabled: true,
+            startTime: "00:00",
+            endTime: "23:59",
+            breaks: [],
+          },
+        ],
+      };
+      const slots = generateSlots({
+        availability,
+        serviceDurationMinutes: 60,
+        appointments: [],
+        holidays: [],
+        slotIntervalMinutes: 60,
+        date: "2025-05-05",
+      });
+      const available = slots.filter((s) => s.available);
+      expect(available.length).toBeGreaterThan(0);
+      expect(available.every((s) => s.start.getTime() >= Date.now())).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

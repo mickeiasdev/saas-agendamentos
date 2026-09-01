@@ -1,5 +1,4 @@
 import {
-  collection,
   doc,
   getDoc,
   getDocs,
@@ -10,6 +9,7 @@ import {
   serverTimestamp,
   updateDoc,
   where,
+  type QueryConstraint,
 } from "firebase/firestore";
 import { getFirebaseFirestore } from "@/lib/firebase/client";
 import { tenantCollections } from "./collections";
@@ -20,14 +20,6 @@ import type { Appointment, Holiday, Professional, ProfessionalAvailability, Serv
 const collectionFor = (tenantId: string) =>
   tenantCollections(getFirebaseFirestore(), tenantId).appointments();
 
-function toDateValue(v: unknown): Date {
-  if (v instanceof Date) return v;
-  if (v && typeof v === "object" && typeof (v as { toDate?: unknown }).toDate === "function") {
-    return (v as { toDate: () => Date }).toDate();
-  }
-  return new Date(String(v));
-}
-
 export async function listAppointments(
   tenantId: string,
   opts: { from: Date; to: Date; professionalId?: string; status?: string } = {
@@ -35,17 +27,17 @@ export async function listAppointments(
     to: new Date(8640000000000000),
   }
 ): Promise<Appointment[]> {
-  let q = query(
-    collectionFor(tenantId),
+  const constraints: QueryConstraint[] = [];
+  if (opts.professionalId) {
+    constraints.push(where("professionalId", "==", opts.professionalId));
+  }
+  constraints.push(
     where("startAt", ">=", opts.from),
     where("startAt", "<=", opts.to),
     orderBy("startAt"),
     limit(500)
   );
-  if (opts.professionalId) {
-    q = query(q, where("professionalId", "==", opts.professionalId));
-  }
-  const snap = await getDocs(q);
+  const snap = await getDocs(query(collectionFor(tenantId), ...constraints));
   let list = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Appointment);
   if (opts.status) list = list.filter((a) => a.status === opts.status);
   return list;
@@ -322,6 +314,3 @@ export async function getAppointment(tenantId: string, id: string): Promise<Appo
   const snap = await getDoc(doc(collectionFor(tenantId), id));
   return snap.exists() ? ({ id: snap.id, ...snap.data() } as Appointment) : null;
 }
-
-void collection;
-void toDateValue;

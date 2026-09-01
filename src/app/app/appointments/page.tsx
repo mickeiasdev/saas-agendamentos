@@ -147,7 +147,7 @@ export default function AppointmentsPage() {
     setRescheduleForm({
       professionalId: a.professionalId,
       serviceId: a.serviceId,
-      date: start.toISOString().slice(0, 10),
+      date: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`,
       time: start.toTimeString().slice(0, 5),
     });
     setError("");

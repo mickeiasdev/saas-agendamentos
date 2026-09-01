@@ -40,9 +40,7 @@ export default function SettingsPage() {
   const [primaryColor, setPrimaryColor] = useState(activeTenant?.branding.primaryColor ?? "#4f46e5");
   const [secondaryColor, setSecondaryColor] = useState(activeTenant?.branding.secondaryColor ?? "#0f172a");
   const [font, setFont] = useState(
-    FONT_OPTIONS.some((f) => f.value === activeTenant?.branding.font) || !activeTenant?.branding.font
-      ? (activeTenant?.branding.font ?? "system-ui")
-      : "system-ui"
+    FONT_OPTIONS.find((f) => f.value === activeTenant?.branding.font)?.id ?? "system-ui"
   );
   const [theme, setTheme] = useState<"light" | "dark">(activeTenant?.branding.theme ?? "light");
   const [showContact, setShowContact] = useState(activeTenant?.branding.showContact ?? true);
