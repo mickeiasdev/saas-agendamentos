@@ -14,6 +14,7 @@ import {
 import { getFirebaseFirestore } from "@/lib/firebase/client";
 import { tenantCollections } from "./collections";
 import { DEFAULT_TZ, validateSlotAvailability } from "@/lib/booking/timezone";
+import { asOverlapCandidate, findBlockingOverlaps, isBlockingStatus, overlapLookback } from "./overlap";
 import type { Appointment, Holiday, Professional, ProfessionalAvailability, Service, Tenant } from "@/types";
 
 const collectionFor = (tenantId: string) =>
@@ -95,10 +96,6 @@ function appointmentDocFromInput(input: CreateAppointmentInput): Record<string, 
   };
 }
 
-function isBlockingStatus(status: Appointment["status"] | undefined): boolean {
-  return status !== "cancelled" && status !== "no_show";
-}
-
 async function loadStaffBookingContext(tenantId: string, professionalId: string, serviceId: string) {
   const db = getFirebaseFirestore();
   const cols = tenantCollections(db, tenantId);
@@ -155,11 +152,14 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
   });
   if (!valid.ok) throw new Error(valid.reason ?? "Horário indisponível.");
 
-  const appointmentsCol = tenantCollections(db, input.tenantId).appointments();
+  const cols = tenantCollections(db, input.tenantId);
+  const appointmentsCol = cols.appointments();
   const slotId = `${input.professionalId}_${input.startAt.getTime()}`;
   const ref = doc(appointmentsCol, slotId);
+  const lockRef = availability ? doc(cols.availability(), availability.id) : null;
 
   await runTransaction(db, async (tx) => {
+    if (lockRef) await tx.get(lockRef);
     const existing = await tx.get(ref);
     if (existing.exists() && isBlockingStatus((existing.data() as Appointment).status)) {
       throw new Error("Horário indisponível: este horário acabou de ser reservado.");
@@ -168,15 +168,17 @@ export async function createAppointment(input: CreateAppointmentInput): Promise<
     const overlapQuery = query(
       appointmentsCol,
       where("professionalId", "==", input.professionalId),
-      where("startAt", "<", input.endAt),
-      where("endAt", ">", input.startAt)
+      where("startAt", ">=", overlapLookback(input.startAt)),
+      where("startAt", "<", input.endAt)
     );
-    const overlapSnap = await tx.get(overlapQuery);
-    const overlaps = overlapSnap.docs.filter((d) => {
-      if (d.id === slotId) return false;
-      const data = d.data() as Appointment;
-      return isBlockingStatus(data.status);
-    });
+    const overlapSnap = await getDocs(overlapQuery);
+    const locked = [];
+    for (const d of overlapSnap.docs) {
+      const fresh = await tx.get(d.ref);
+      if (!fresh.exists()) continue;
+      locked.push(asOverlapCandidate(fresh.id, fresh.data() as Appointment));
+    }
+    const overlaps = findBlockingOverlaps(locked, input.startAt, input.endAt, [slotId]);
     if (overlaps.length > 0) {
       throw new Error("Horário indisponível: já existe um agendamento neste intervalo.");
     }
@@ -228,12 +230,15 @@ export async function rescheduleAppointment(input: RescheduleAppointmentInput): 
   });
   if (!valid.ok) throw new Error(valid.reason ?? "Horário indisponível.");
 
-  const appointmentsCol = tenantCollections(db, input.tenantId).appointments();
+  const cols = tenantCollections(db, input.tenantId);
+  const appointmentsCol = cols.appointments();
   const oldRef = doc(appointmentsCol, input.appointmentId);
   const newId = `${input.professionalId}_${input.startAt.getTime()}`;
   const newRef = doc(appointmentsCol, newId);
+  const lockRef = availability ? doc(cols.availability(), availability.id) : null;
 
   await runTransaction(db, async (tx) => {
+    if (lockRef) await tx.get(lockRef);
     const oldSnap = await tx.get(oldRef);
     if (!oldSnap.exists()) throw new Error("Agendamento não encontrado.");
     const current = oldSnap.data() as Appointment;
@@ -251,14 +256,17 @@ export async function rescheduleAppointment(input: RescheduleAppointmentInput): 
     const overlapQuery = query(
       appointmentsCol,
       where("professionalId", "==", input.professionalId),
-      where("startAt", "<", input.endAt),
-      where("endAt", ">", input.startAt)
+      where("startAt", ">=", overlapLookback(input.startAt)),
+      where("startAt", "<", input.endAt)
     );
-    const overlapSnap = await tx.get(overlapQuery);
-    const overlaps = overlapSnap.docs.filter((d) => {
-      if (d.id === input.appointmentId || d.id === newId) return false;
-      return isBlockingStatus((d.data() as Appointment).status);
-    });
+    const overlapSnap = await getDocs(overlapQuery);
+    const locked = [];
+    for (const d of overlapSnap.docs) {
+      const fresh = await tx.get(d.ref);
+      if (!fresh.exists()) continue;
+      locked.push(asOverlapCandidate(fresh.id, fresh.data() as Appointment));
+    }
+    const overlaps = findBlockingOverlaps(locked, input.startAt, input.endAt, [input.appointmentId, newId]);
     if (overlaps.length > 0) {
       throw new Error("Horário indisponível: já existe um agendamento neste intervalo.");
     }

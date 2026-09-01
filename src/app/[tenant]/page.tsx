@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { publicThemeClasses } from "@/lib/branding/theme";
 import { formatBRL } from "@/lib/utils/format";
 import type { Professional, Service, Tenant } from "@/types";
 
@@ -69,6 +70,7 @@ export default function PublicSitePage({
   const primary = branding.primaryColor ?? "#4f46e5";
   const secondary = branding.secondaryColor ?? "#0f172a";
   const fontFamily = branding.font ?? undefined;
+  const theme = publicThemeClasses(branding.theme);
 
   const sectionOrder =
     branding.sectionOrder?.length
@@ -82,13 +84,13 @@ export default function PublicSitePage({
       services.length > 0 ? (
         <section className="py-12">
           <div className="mx-auto max-w-5xl px-6">
-            <h2 className="mb-6 text-2xl font-bold text-slate-900">Serviços</h2>
+            <h2 className={`mb-6 text-2xl font-bold ${theme.heading}`}>Serviços</h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {services.map((s) => (
-                <div key={s.id} className="rounded-xl border border-slate-200 p-5">
-                  <h3 className="font-semibold text-slate-900">{s.name}</h3>
+                <div key={s.id} className={theme.card}>
+                  <h3 className={`font-semibold ${theme.heading}`}>{s.name}</h3>
                   {s.description && (
-                    <p className="mt-1 text-sm text-slate-500">{s.description}</p>
+                    <p className={`mt-1 text-sm ${theme.muted}`}>{s.description}</p>
                   )}
                   <div className="mt-3 flex items-center justify-between">
                     <span className="text-lg font-bold" style={{ color: primary }}>
@@ -106,19 +108,19 @@ export default function PublicSitePage({
       professionals.length > 0 ? (
         <section className="py-12">
           <div className="mx-auto max-w-5xl px-6">
-            <h2 className="mb-6 text-2xl font-bold text-slate-900">Profissionais</h2>
+            <h2 className={`mb-6 text-2xl font-bold ${theme.heading}`}>Profissionais</h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {professionals.map((p) => (
-                <div key={p.id} className="rounded-xl border border-slate-200 p-5 text-center">
+                <div key={p.id} className={`${theme.card} text-center`}>
                   <span
                     className="mx-auto flex h-14 w-14 items-center justify-center rounded-full text-xl font-bold text-white"
                     style={{ backgroundColor: p.color }}
                   >
                     {p.name.charAt(0).toUpperCase()}
                   </span>
-                  <div className="mt-3 font-semibold text-slate-900">{p.name}</div>
+                  <div className={`mt-3 font-semibold ${theme.heading}`}>{p.name}</div>
                   {p.description && (
-                    <p className="mt-1 text-sm text-slate-500">{p.description}</p>
+                    <p className={`mt-1 text-sm ${theme.muted}`}>{p.description}</p>
                   )}
                 </div>
               ))}
@@ -130,12 +132,12 @@ export default function PublicSitePage({
       schedule.length > 0 ? (
         <section className="py-12">
           <div className="mx-auto max-w-3xl px-6">
-            <h2 className="mb-6 text-2xl font-bold text-slate-900">Horários de funcionamento</h2>
-            <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
+            <h2 className={`mb-6 text-2xl font-bold ${theme.heading}`}>Horários de funcionamento</h2>
+            <div className={`divide-y rounded-xl border ${theme.divider}`}>
               {schedule.map((s) => (
                 <div key={s.dayOfWeek} className="flex items-center justify-between px-5 py-3 text-sm">
-                  <span className="font-medium text-slate-900">{s.label}</span>
-                  <span className="text-slate-600">
+                  <span className={`font-medium ${theme.heading}`}>{s.label}</span>
+                  <span className={theme.body}>
                     {s.open} - {s.close}
                   </span>
                 </div>
@@ -148,7 +150,7 @@ export default function PublicSitePage({
       branding.galleryUrls?.length ? (
         <section className="py-12">
           <div className="mx-auto max-w-5xl px-6">
-            <h2 className="mb-6 text-2xl font-bold text-slate-900">Galeria</h2>
+            <h2 className={`mb-6 text-2xl font-bold ${theme.heading}`}>Galeria</h2>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {branding.galleryUrls.map((u) => (
                 <img key={u} src={u} alt="" className="h-32 w-full rounded-xl object-cover" loading="lazy" />
@@ -161,13 +163,13 @@ export default function PublicSitePage({
       branding.testimonials?.length ? (
         <section className="py-12">
           <div className="mx-auto max-w-5xl px-6">
-            <h2 className="mb-6 text-2xl font-bold text-slate-900">Depoimentos</h2>
+            <h2 className={`mb-6 text-2xl font-bold ${theme.heading}`}>Depoimentos</h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {branding.testimonials.map((t) => (
-                <div key={t.id} className="rounded-xl border border-slate-200 p-5">
+                <div key={t.id} className={theme.card}>
                   <div className="text-amber-500">{"★".repeat(Math.max(0, Math.min(5, t.rating)))}</div>
-                  <p className="mt-2 text-sm text-slate-600">{"“"}{t.text}{"”"}</p>
-                  <div className="mt-3 text-sm font-semibold text-slate-900">{t.author}</div>
+                  <p className={`mt-2 text-sm ${theme.body}`}>{"“"}{t.text}{"”"}</p>
+                  <div className={`mt-3 text-sm font-semibold ${theme.heading}`}>{t.author}</div>
                 </div>
               ))}
             </div>
@@ -178,12 +180,12 @@ export default function PublicSitePage({
       branding.faq?.length ? (
         <section className="py-12">
           <div className="mx-auto max-w-3xl px-6">
-            <h2 className="mb-6 text-2xl font-bold text-slate-900">Perguntas frequentes</h2>
+            <h2 className={`mb-6 text-2xl font-bold ${theme.heading}`}>Perguntas frequentes</h2>
             <div className="space-y-3">
               {branding.faq.map((f) => (
-                <details key={f.id} className="rounded-xl border border-slate-200 p-4">
-                  <summary className="cursor-pointer font-medium text-slate-900">{f.question}</summary>
-                  <p className="mt-2 text-sm text-slate-600">{f.answer}</p>
+                <details key={f.id} className={`${theme.card} p-4`}>
+                  <summary className={`cursor-pointer font-medium ${theme.heading}`}>{f.question}</summary>
+                  <p className={`mt-2 text-sm ${theme.body}`}>{f.answer}</p>
                 </details>
               ))}
             </div>
@@ -194,8 +196,8 @@ export default function PublicSitePage({
       branding.showContact ? (
         <section className="py-12">
           <div className="mx-auto max-w-5xl px-6">
-            <h2 className="mb-6 text-2xl font-bold text-slate-900">Contato</h2>
-            <div className="grid gap-4 text-sm text-slate-600 sm:grid-cols-2">
+            <h2 className={`mb-6 text-2xl font-bold ${theme.heading}`}>Contato</h2>
+            <div className={`grid gap-4 text-sm sm:grid-cols-2 ${theme.body}`}>
               {tenant.phone && <div>Telefone: {tenant.phone}</div>}
               {tenant.whatsapp && <div>WhatsApp: {tenant.whatsapp}</div>}
               {tenant.email && <div>E-mail: {tenant.email}</div>}
@@ -215,7 +217,7 @@ export default function PublicSitePage({
                         href={key === "instagram" || key === "tiktok" || key === "x" ? `https://www.instagram.com/${value.replace("@", "")}` : value}
                         target="_blank"
                         rel="noreferrer"
-                        className="rounded-lg border border-slate-200 px-3 py-1 text-xs capitalize text-slate-600 hover:border-slate-400"
+                        className={`rounded-lg border px-3 py-1 text-xs capitalize hover:opacity-80 ${theme.divider} ${theme.body}`}
                       >
                         {key}
                       </a>
@@ -242,13 +244,13 @@ export default function PublicSitePage({
     .map(([, node]) => node);
 
   return (
-    <div className="min-h-screen bg-white" style={{ fontFamily }}>
+    <div className={theme.page} style={{ fontFamily }} data-theme={branding.theme ?? "light"}>
       {branding.bannerUrl && (
         <div className="h-48 w-full overflow-hidden sm:h-64">
           <img src={branding.bannerUrl} alt="" className="h-full w-full object-cover" />
         </div>
       )}
-      <header className="border-b border-slate-100">
+      <header className={theme.header}>
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
             {tenant.logoUrl ? (
@@ -261,7 +263,7 @@ export default function PublicSitePage({
                 {(tenant.tradeName ?? tenant.name).charAt(0).toUpperCase()}
               </span>
             )}
-            <span className="text-lg font-bold text-slate-900">
+            <span className={`text-lg font-bold ${theme.heading}`}>
               {tenant.tradeName ?? tenant.name}
             </span>
           </div>
@@ -284,7 +286,7 @@ export default function PublicSitePage({
             >
               {tenant.tradeName ?? tenant.name}
             </h1>
-            <p className="mt-3 text-lg text-slate-600">
+            <p className={`mt-3 text-lg ${theme.body}`}>
               {tenant.description ?? "Agende seu horário online em poucos minutos."}
             </p>
             <div className="mt-8">
@@ -303,7 +305,7 @@ export default function PublicSitePage({
         {remainder}
       </main>
 
-      <footer className="border-t border-slate-100 py-8 text-center text-sm" style={{ color: secondary }}>
+      <footer className={`${theme.footer} py-8 text-center text-sm`} style={{ color: secondary }}>
         {tenant.tradeName ?? tenant.name} — agendamento online
       </footer>
     </div>

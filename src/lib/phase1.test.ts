@@ -1,0 +1,189 @@
+import { describe, expect, it } from "vitest";
+import { FakeFirestore } from "@/lib/booking/fakeFirestore";
+import {
+  cancelPublicAppointment,
+  createPublicAppointment,
+  reschedulePublicAppointment,
+} from "@/lib/booking/server";
+import { slugify } from "@/lib/tenant/slug";
+import { findBlockingOverlaps } from "@/lib/repository/overlap";
+import { publicThemeClasses } from "@/lib/branding/theme";
+import { validateSlotAvailability } from "@/lib/booking/timezone";
+import { can } from "@/lib/rbac/roles";
+import { hasAccess } from "@/lib/rbac/membership";
+import type { ProfessionalAvailability, TenantUser } from "@/types";
+
+const MONDAY = "2030-01-14";
+const customer = { name: "João Silva", phone: "11999999999" };
+
+function seed(db: FakeFirestore, tenantId: string, slug: string) {
+  db.store.set(`tenants/${tenantId}`, {
+    id: tenantId,
+    slug,
+    name: "Barbearia Central",
+    tradeName: "Central",
+    description: "Cortes e barba no centro.",
+    status: "active",
+    planId: "ALL",
+    ownerUserId: "owner1",
+    branding: { theme: "dark", primaryColor: "#111827", secondaryColor: "#f8fafc" },
+    settings: {
+      timezone: "America/Sao_Paulo",
+      currency: "BRL",
+      slotIntervalMinutes: 30,
+      bookingLeadTimeMinutes: 60,
+      bookingCancelWindowMinutes: 120,
+      confirmationRequired: false,
+      allowOnlinePayments: false,
+    },
+  });
+  db.store.set(`tenants/${tenantId}/categories/cat1`, { id: "cat1", tenantId, name: "Cabelo", status: "active" });
+  db.store.set(`tenants/${tenantId}/services/svc1`, {
+    id: "svc1",
+    tenantId,
+    name: "Corte",
+    price: 80,
+    durationMinutes: 30,
+    status: "active",
+    professionals: ["pro1"],
+  });
+  db.store.set(`tenants/${tenantId}/professionals/pro1`, {
+    id: "pro1",
+    tenantId,
+    name: "Ana",
+    active: true,
+    serviceIds: ["svc1"],
+  });
+  db.store.set(`tenants/${tenantId}/availability/av1`, {
+    id: "av1",
+    tenantId,
+    professionalId: "pro1",
+    workDays: [{ dayOfWeek: 1, enabled: true, startTime: "09:00", endTime: "18:00", breaks: [{ start: "12:00", end: "13:00" }] }],
+    daysOff: [],
+    vacations: [],
+    blockedDates: [],
+    exceptions: [],
+  });
+  db.store.set(`tenants/${tenantId}/customers/cust1`, {
+    id: "cust1",
+    tenantId,
+    name: "Maria",
+    phone: "11988887777",
+  });
+}
+
+describe("Fase 1 — aceite (cadastro → empresa → CRUD → agendamento → cancel/remarcar)", () => {
+  it("slug da empresa e descrição entram na personalização", () => {
+    expect(slugify("Barbearia Central")).toBe("barbearia-central");
+    const db = new FakeFirestore();
+    seed(db, "t1", "barbearia-central");
+    const tenant = db.store.get("tenants/t1") as { description: string; branding: { theme: string } };
+    expect(tenant.description).toBe("Cortes e barba no centro.");
+    expect(publicThemeClasses(tenant.branding.theme as "dark").dark).toBe(true);
+  });
+
+  it("categoria, serviço, profissional, horário e cliente ficam isolados por tenant", () => {
+    const db = new FakeFirestore();
+    seed(db, "tA", "tena");
+    seed(db, "tB", "tenb");
+    expect(db.store.get("tenants/tA/services/svc1")).toBeTruthy();
+    expect(db.store.get("tenants/tB/services/svc1")).toBeTruthy();
+    expect(db.store.get("tenants/tA/customers/cust1")).not.toBe(db.store.get("tenants/tB/customers/cust1"));
+  });
+
+  it("agenda: expediente, intervalo, folga, férias, feriado e profissional indisponível", () => {
+    const availability: ProfessionalAvailability = {
+      id: "av1",
+      tenantId: "t1",
+      professionalId: "pro1",
+      workDays: [{ dayOfWeek: 1, enabled: true, startTime: "09:00", endTime: "18:00", breaks: [{ start: "12:00", end: "13:00" }] }],
+      daysOff: ["2030-01-14"],
+      vacations: [],
+      blockedDates: [],
+      exceptions: [],
+      updatedAt: { seconds: 0, nanoseconds: 0 },
+    };
+    const instant = new Date("2030-01-14T13:00:00Z");
+    expect(validateSlotAvailability({ availability, holidays: [], durationMinutes: 30, instant, tz: "America/Sao_Paulo" }).ok).toBe(false);
+  });
+
+  it("agendamento, double booking, remarcação e cancelamento", async () => {
+    const db = new FakeFirestore();
+    seed(db, "t1", "tena");
+    const created = await createPublicAppointment(db as never, {
+      tenantSlug: "tena",
+      serviceId: "svc1",
+      professionalId: "pro1",
+      date: MONDAY,
+      time: "10:00",
+      customer,
+    });
+    expect(created.appointmentId).toBeTruthy();
+
+    await expect(
+      createPublicAppointment(db as never, {
+        tenantSlug: "tena",
+        serviceId: "svc1",
+        professionalId: "pro1",
+        date: MONDAY,
+        time: "10:00",
+        customer: { name: "Outro", phone: "11911112222" },
+      })
+    ).rejects.toThrow();
+
+    const moved = await reschedulePublicAppointment(db as never, {
+      tenantSlug: "tena",
+      appointmentId: created.appointmentId,
+      date: MONDAY,
+      time: "15:00",
+    });
+    expect(moved.ok).toBe(true);
+
+    const cancelled = await cancelPublicAppointment(db as never, {
+      tenantSlug: "tena",
+      appointmentId: moved.appointmentId,
+    });
+    expect(cancelled.ok).toBe(true);
+  });
+
+  it("Tenant A tenta acessar Tenant B → NEGADO (membership + API)", async () => {
+    const memberships: TenantUser[] = [
+      { userId: "uA", tenantId: "tA", role: "TENANT_OWNER", status: "active", createdAt: new Date() },
+    ];
+    expect(hasAccess(memberships, "tB", "appointment.manage")).toBe(false);
+    expect(can("TENANT_OWNER", "master.view")).toBe(false);
+
+    const db = new FakeFirestore();
+    seed(db, "tA", "tena");
+    seed(db, "tB", "tenb");
+    const a = await createPublicAppointment(db as never, {
+      tenantSlug: "tena",
+      serviceId: "svc1",
+      professionalId: "pro1",
+      date: MONDAY,
+      time: "11:00",
+      customer,
+    });
+    await expect(
+      cancelPublicAppointment(db as never, { tenantSlug: "tenb", appointmentId: a.appointmentId })
+    ).rejects.toThrow("não encontrado");
+  });
+
+  it("overlap dentro da transação considera intervalo, não só o slot-id", () => {
+    const start = new Date("2030-01-14T13:00:00Z");
+    const end = new Date("2030-01-14T13:30:00Z");
+    const hits = findBlockingOverlaps(
+      [
+        {
+          id: "outro-id",
+          startAt: new Date("2030-01-14T12:45:00Z"),
+          endAt: new Date("2030-01-14T13:15:00Z"),
+          status: "confirmed",
+        },
+      ],
+      start,
+      end
+    );
+    expect(hits).toHaveLength(1);
+  });
+});

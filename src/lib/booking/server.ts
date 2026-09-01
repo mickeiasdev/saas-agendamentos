@@ -2,6 +2,7 @@ import { FieldValue, type Firestore } from "firebase-admin/firestore";
 import { dayOfWeekOf, instantFromWallClock, minutesToTime, toMinutes, validateSlotAvailability, wallClockOf, DEFAULT_TZ } from "./timezone";
 import { getPlan, checkLimit, PLAN_ID } from "@/lib/plans";
 import { applyCoupon } from "@/lib/coupons";
+import { asOverlapCandidate, findBlockingOverlaps, overlapLookback } from "@/lib/repository/overlap";
 import type { Appointment, Coupon, Holiday, Professional, ProfessionalAvailability, Service, Tenant } from "@/types";
 
 export class BookingError extends Error {}
@@ -332,13 +333,15 @@ export async function createPublicAppointment(
     const overlap = await tx.get(
       col
         .where("professionalId", "==", professional.id)
+        .where("startAt", ">=", overlapLookback(startAt))
         .where("startAt", "<", endAt)
-        .where("endAt", ">", startAt)
     );
-    const blocking = overlap.docs.filter((d) => {
-      const status = (d.data() as Appointment).status;
-      return status !== "cancelled" && status !== "no_show";
-    });
+    const blocking = findBlockingOverlaps(
+      overlap.docs.map((d) => asOverlapCandidate(d.id, d.data() as Appointment)),
+      startAt,
+      endAt,
+      [slotId]
+    );
     if (blocking.length > 0) {
       throw new BookingError("Horário indisponível: já existe um agendamento neste intervalo.");
     }
@@ -545,14 +548,15 @@ export async function reschedulePublicAppointment(
     const overlap = await tx.get(
       col
         .where("professionalId", "==", professional.id)
+        .where("startAt", ">=", overlapLookback(startAt))
         .where("startAt", "<", endAt)
-        .where("endAt", ">", startAt)
     );
-    const blocking = overlap.docs.filter((d) => {
-      if (d.id === input.appointmentId || d.id === newId) return false;
-      const status = (d.data() as Appointment).status;
-      return status !== "cancelled" && status !== "no_show";
-    });
+    const blocking = findBlockingOverlaps(
+      overlap.docs.map((d) => asOverlapCandidate(d.id, d.data() as Appointment)),
+      startAt,
+      endAt,
+      [input.appointmentId, newId]
+    );
     if (blocking.length > 0) {
       throw new BookingError("Horário indisponível: já existe um agendamento neste intervalo.");
     }

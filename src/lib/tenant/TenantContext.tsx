@@ -13,6 +13,7 @@ import {
 import { getFirebaseFirestore } from "@/lib/firebase/client";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { getPlanLimits, PLAN_ID } from "@/lib/plans";
+import { slugify } from "@/lib/tenant/slug";
 import type { Tenant, TenantUser } from "@/types";
 
 export interface TenantState {
@@ -46,15 +47,6 @@ export interface CreateTenantInput {
     state?: string;
     zip?: string;
   };
-}
-
-function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)+/g, "");
 }
 
 const TenantContext = createContext<TenantState | undefined>(undefined);

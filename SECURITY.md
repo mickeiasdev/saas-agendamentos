@@ -9,7 +9,8 @@ membro ativo (`tenant_users/{uid_tenantId}`).
 - Membros ativos leem/gerenciam as subcoleções do seu tenant.
 - O dono do tenant (TENANT_OWNER) tem privilégios administrativos.
 - Nenhum usuário de Tenant A consegue ler documentos de Tenant B.
-- O site público lê apenas o documento `tenants/{id}` (dados de exibição).
+- O site público **não** lê o Firestore no cliente: consome a API
+  `/api/public/site/[slug]` (Admin SDK) com projeção sanitizada.
 
 ## RBAC
 

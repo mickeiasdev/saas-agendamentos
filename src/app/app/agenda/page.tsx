@@ -196,9 +196,14 @@ export default function AgendaPage() {
       </div>
 
       {view === "month" ? (
-        <div className="card p-4">
-          <MonthView anchor={anchor} appointments={filtered} nameOf={nameOf} />
-        </div>
+        <>
+          <div className="card hidden p-4 md:block">
+            <MonthView anchor={anchor} appointments={filtered} nameOf={nameOf} />
+          </div>
+          <div className="md:hidden">
+            <MobileCards appointments={filtered} nameOf={nameOf} view="month" anchor={anchor} />
+          </div>
+        </>
       ) : (
         <>
           <div className="hidden md:block">
@@ -249,7 +254,15 @@ function MobileCards({
   view: ViewMode;
   anchor: Date;
 }) {
-  const days = view === "day" ? [startOfDay(anchor)] : Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(anchor), i));
+  const days =
+    view === "day"
+      ? [startOfDay(anchor)]
+      : view === "week"
+        ? Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(anchor), i))
+        : Array.from(
+            { length: new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0).getDate() },
+            (_, i) => new Date(anchor.getFullYear(), anchor.getMonth(), i + 1)
+          );
   return (
     <div className="space-y-4">
       {days.map((d) => {

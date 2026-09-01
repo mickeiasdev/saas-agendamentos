@@ -23,9 +23,12 @@ Um único frontend Next.js serve dois contextos:
 1. **Plataforma** (`/app/*`): painéis autenticados — Master, do tenant (dashboard, agenda, CRUDs).
 2. **Site público do tenant** (`/[tenant]/*`): landing e fluxo de agendamento, sem login.
 
-O roteamento por slug do tenant (`/nome-da-empresa`) substitui o subdomínio
-`empresa.minhaplataforma.com` em ambientes que não suportam wildcard DNS.
-Em produção com domínio wildcard, o mesmo parâmetro `[tenant]` é usado.
+O site público vive em `/{slug}` (ex.: `/barbearia/agendar`).
+
+Equivalente de `tenant.minhaplataforma.com`: o `src/middleware.ts` reescreve
+`slug.minhaplataforma.com` para `/{slug}` quando `NEXT_PUBLIC_PLATFORM_DOMAIN`
+está configurado e há DNS wildcard. Sem wildcard (preview/local), use o caminho
+`/{slug}` diretamente.
 
 ## Decisões arquiteturais
 

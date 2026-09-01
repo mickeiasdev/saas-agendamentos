@@ -132,6 +132,15 @@ export default function AppointmentsPage() {
     await load();
   }
 
+  async function handleCancel(a: Appointment) {
+    if (!activeTenantId) return;
+    if (!window.confirm("Cancelar este agendamento?")) return;
+    await updateAppointmentStatus(activeTenantId, a.id, "cancelled", {
+      cancellationReason: "cancelado no painel",
+    });
+    await load();
+  }
+
   function openReschedule(a: Appointment) {
     const start = toDateValue(a.startAt);
     setRescheduleTarget(a);
@@ -178,6 +187,7 @@ export default function AppointmentsPage() {
 
   const canReschedule = (a: Appointment) =>
     a.status !== "cancelled" && a.status !== "completed" && a.status !== "no_show";
+  const canCancel = canReschedule;
 
   return (
     <div className="space-y-6">
@@ -214,58 +224,118 @@ export default function AppointmentsPage() {
           }
         />
       ) : (
-        <div className="card overflow-x-auto p-0">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500">
-              <tr>
-                <th className="px-4 py-3">Data/Hora</th>
-                <th className="px-4 py-3">Cliente</th>
-                <th className="px-4 py-3">Serviço</th>
-                <th className="px-4 py-3">Profissional</th>
-                <th className="px-4 py-3">Preço</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {appointments.map((a) => (
-                <tr key={a.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-medium text-slate-900">{formatDateTime(a.startAt)}</td>
-                  <td className="px-4 py-3 text-slate-700">{customerName(a.customerId)}</td>
-                  <td className="px-4 py-3 text-slate-600">{serviceName(a.serviceId)}</td>
-                  <td className="px-4 py-3 text-slate-600">{professionalName(a.professionalId)}</td>
-                  <td className="px-4 py-3 text-slate-900">
-                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(a.price)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <select
-                      className="input py-1 text-xs"
-                      value={a.status}
-                      onChange={(e) => void changeStatus(a, e.target.value as AppointmentStatus)}
+        <>
+          <div className="hidden md:block">
+            <div className="card overflow-x-auto p-0">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3">Data/Hora</th>
+                    <th className="px-4 py-3">Cliente</th>
+                    <th className="px-4 py-3">Serviço</th>
+                    <th className="px-4 py-3">Profissional</th>
+                    <th className="px-4 py-3">Preço</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {appointments.map((a) => (
+                    <tr key={a.id} className="hover:bg-slate-50">
+                      <td className="px-4 py-3 font-medium text-slate-900">{formatDateTime(a.startAt)}</td>
+                      <td className="px-4 py-3 text-slate-700">{customerName(a.customerId)}</td>
+                      <td className="px-4 py-3 text-slate-600">{serviceName(a.serviceId)}</td>
+                      <td className="px-4 py-3 text-slate-600">{professionalName(a.professionalId)}</td>
+                      <td className="px-4 py-3 text-slate-900">
+                        {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(a.price)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <select
+                          className="input py-1 text-xs"
+                          value={a.status}
+                          onChange={(e) => void changeStatus(a, e.target.value as AppointmentStatus)}
+                        >
+                          {STATUS_OPTIONS.map((s) => (
+                            <option key={s} value={s}>
+                              {STATUS_LABEL[s]}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex justify-end gap-3">
+                          {canReschedule(a) && (
+                            <button
+                              type="button"
+                              className="text-xs font-medium text-brand-600 hover:underline"
+                              onClick={() => openReschedule(a)}
+                            >
+                              Remarcar
+                            </button>
+                          )}
+                          {canCancel(a) && (
+                            <button
+                              type="button"
+                              className="text-xs font-medium text-red-600 hover:underline"
+                              onClick={() => void handleCancel(a)}
+                            >
+                              Cancelar
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div className="space-y-3 md:hidden">
+            {appointments.map((a) => (
+              <div key={a.id} className="card space-y-2">
+                <div className="font-semibold text-slate-900">{formatDateTime(a.startAt)}</div>
+                <div className="text-sm text-slate-700">{customerName(a.customerId)}</div>
+                <div className="text-sm text-slate-600">
+                  {serviceName(a.serviceId)} · {professionalName(a.professionalId)}
+                </div>
+                <div className="text-sm font-medium text-slate-900">
+                  {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(a.price)}
+                </div>
+                <select
+                  className="input py-1 text-xs"
+                  value={a.status}
+                  onChange={(e) => void changeStatus(a, e.target.value as AppointmentStatus)}
+                >
+                  {STATUS_OPTIONS.map((s) => (
+                    <option key={s} value={s}>
+                      {STATUS_LABEL[s]}
+                    </option>
+                  ))}
+                </select>
+                <div className="flex gap-3 pt-1">
+                  {canReschedule(a) && (
+                    <button
+                      type="button"
+                      className="text-xs font-medium text-brand-600 hover:underline"
+                      onClick={() => openReschedule(a)}
                     >
-                      {STATUS_OPTIONS.map((s) => (
-                        <option key={s} value={s}>
-                          {STATUS_LABEL[s]}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {canReschedule(a) && (
-                      <button
-                        type="button"
-                        className="text-xs font-medium text-brand-600 hover:underline"
-                        onClick={() => openReschedule(a)}
-                      >
-                        Remarcar
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                      Remarcar
+                    </button>
+                  )}
+                  {canCancel(a) && (
+                    <button
+                      type="button"
+                      className="text-xs font-medium text-red-600 hover:underline"
+                      onClick={() => void handleCancel(a)}
+                    >
+                      Cancelar
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Novo agendamento">

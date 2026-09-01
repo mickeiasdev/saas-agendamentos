@@ -185,7 +185,10 @@ export default function SettingsPage() {
           {publicUrl}
         </a>
         <p className="mt-2 text-xs text-slate-500">
-           No ambiente de preview local, acesse <code className="rounded bg-slate-100 px-1">/{tenant.slug}</code> na aplicação.
+          Equivalente de <code className="rounded bg-slate-100 px-1">{tenant.slug}.{platformDomain}</code>:
+          em produção com DNS wildcard o middleware reescreve o subdomínio para{" "}
+          <code className="rounded bg-slate-100 px-1">/{tenant.slug}</code>. Em preview local, acesse{" "}
+          <code className="rounded bg-slate-100 px-1">/{tenant.slug}</code> diretamente.
         </p>
         <div className="mt-4 flex flex-wrap items-start gap-4">
           <div className="rounded-xl border border-slate-200 bg-white p-3">

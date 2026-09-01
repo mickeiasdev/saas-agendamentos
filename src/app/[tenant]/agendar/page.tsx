@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { publicThemeClasses } from "@/lib/branding/theme";
 import { formatBRL } from "@/lib/utils/format";
 import type { Professional, Service, Tenant } from "@/types";
 
@@ -233,18 +234,22 @@ export default function BookingPage({
   }
 
   const primary = tenant.branding.primaryColor ?? "#4f46e5";
+  const theme = publicThemeClasses(tenant.branding.theme);
   const dateLabel = date
     ? new Date(`${date}T00:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })
     : "";
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="border-b border-slate-100 bg-white">
+    <div
+      className={theme.dark ? "min-h-screen bg-slate-950 text-slate-100" : "min-h-screen bg-slate-50 text-slate-900"}
+      data-theme={tenant.branding.theme ?? "light"}
+    >
+      <header className={theme.header}>
         <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
-          <span className="text-lg font-bold text-slate-900">
+          <span className={`text-lg font-bold ${theme.heading}`}>
             {(tenant.tradeName ?? tenant.name).charAt(0).toUpperCase()}
           </span>
-          <span className="text-sm text-slate-500">Agendamento online</span>
+          <span className={`text-sm ${theme.muted}`}>Agendamento online</span>
         </div>
       </header>
 
@@ -266,7 +271,7 @@ export default function BookingPage({
                   >
                     {i + 1}
                   </span>
-                  <span className={active ? "font-semibold text-slate-900" : ""}>{label}</span>
+                   <span className={active ? `font-semibold ${theme.heading}` : theme.muted}>{label}</span>
                   {i < 3 && <span className="text-slate-300">-</span>}
                 </li>
               );
@@ -280,8 +285,8 @@ export default function BookingPage({
 
         {step === "service" && (
           <div className="space-y-3">
-            <h1 className="text-2xl font-bold text-slate-900">Escolha o serviço</h1>
-            {services.length === 0 && <p className="text-slate-500">Nenhum serviço disponível.</p>}
+            <h1 className={`text-2xl font-bold ${theme.heading}`}>Escolha o serviço</h1>
+            {services.length === 0 && <p className={theme.muted}>Nenhum serviço disponível.</p>}
             {services.map((s) => (
               <button
                 key={s.id}
@@ -293,8 +298,8 @@ export default function BookingPage({
                 className="card flex w-full items-center justify-between text-left hover:border-brand-300"
               >
                 <div>
-                  <div className="font-semibold text-slate-900">{s.name}</div>
-                  {s.description && <div className="text-sm text-slate-500">{s.description}</div>}
+                  <div className={`font-semibold ${theme.heading}`}>{s.name}</div>
+                  {s.description && <div className={`text-sm ${theme.muted}`}>{s.description}</div>}
                 </div>
                 <div className="text-right">
                   <div className="font-bold" style={{ color: primary }}>
@@ -309,7 +314,7 @@ export default function BookingPage({
 
         {step === "professional" && (
           <div className="space-y-3">
-            <h1 className="text-2xl font-bold text-slate-900">Escolha o profissional</h1>
+            <h1 className={`text-2xl font-bold ${theme.heading}`}>Escolha o profissional</h1>
             {eligibleProfessionals.map((p) => (
               <button
                 key={p.id}
@@ -326,8 +331,8 @@ export default function BookingPage({
                   {p.name.charAt(0).toUpperCase()}
                 </span>
                 <div>
-                  <div className="font-semibold text-slate-900">{p.name}</div>
-                  {p.description && <div className="text-sm text-slate-500">{p.description}</div>}
+                  <div className={`font-semibold ${theme.heading}`}>{p.name}</div>
+                  {p.description && <div className={`text-sm ${theme.muted}`}>{p.description}</div>}
                 </div>
               </button>
             ))}
@@ -339,7 +344,7 @@ export default function BookingPage({
 
         {step === "datetime" && (
           <div className="space-y-6">
-            <h1 className="text-2xl font-bold text-slate-900">Escolha data e horário</h1>
+            <h1 className={`text-2xl font-bold ${theme.heading}`}>Escolha data e horário</h1>
             <div className="grid gap-6 sm:grid-cols-2">
               <div>
                 <label className="label">Data</label>
@@ -351,9 +356,9 @@ export default function BookingPage({
                   onChange={(e) => setDate(e.target.value)}
                 />
               </div>
-              <div className="text-sm text-slate-500">
+              <div className={`text-sm ${theme.muted}`}>
                 {professional && (
-                  <div className="rounded-lg bg-slate-100 p-3">
+                  <div className={theme.panel}>
                     Profissional: <b>{professional.name}</b>
                     <br />
                     Serviço: <b>{service?.name}</b> ({service?.durationMinutes} min)
@@ -405,8 +410,8 @@ export default function BookingPage({
 
         {step === "customer" && (
           <form onSubmit={handleConfirm} className="space-y-4">
-            <h1 className="text-2xl font-bold text-slate-900">Seus dados</h1>
-            <div className="rounded-lg bg-slate-100 p-3 text-sm text-slate-700">
+            <h1 className={`text-2xl font-bold ${theme.heading}`}>Seus dados</h1>
+            <div className={`${theme.panel} text-sm ${theme.body}`}>
               {service?.name} com {professional?.name} em {dateLabel} às {selectedTime}
             </div>
             <div>
@@ -471,7 +476,7 @@ export default function BookingPage({
             >
               {doneAction === "cancelled" ? "X" : "OK"}
             </div>
-            <h1 className="mt-4 text-2xl font-bold text-slate-900">
+              <h1 className={`mt-4 text-2xl font-bold ${theme.heading}`}>
               {doneAction === "cancelled"
                 ? "Agendamento cancelado"
                 : doneAction === "rescheduled"
@@ -516,7 +521,7 @@ export default function BookingPage({
 
             {showReschedule && doneAction !== "cancelled" && (
               <form onSubmit={handleReschedule} className="mt-6 space-y-4 text-left">
-                <h2 className="text-lg font-semibold text-slate-900">Escolha o novo horário</h2>
+                <h2 className={`text-lg font-semibold ${theme.heading}`}>Escolha o novo horário</h2>
                 <div>
                   <label className="label">Data</label>
                   <input
