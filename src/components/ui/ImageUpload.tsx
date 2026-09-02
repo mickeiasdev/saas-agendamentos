@@ -69,7 +69,7 @@ export function ImageUpload({
             onChange={(e) => void handleFile(e.target.files?.[0])}
           />
           <p className="mt-1 text-xs text-slate-400">
-            {uploading ? "Enviando..." : "JPG, PNG, WEBP ou GIF até 5 MB."}
+            {uploading ? "Comprimindo..." : "JPG, PNG, WEBP ou GIF. A foto é comprimida e salva no Firestore (sem Storage pago)."}
           </p>
           {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
         </div>

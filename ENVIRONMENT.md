@@ -8,7 +8,8 @@ Nunca commite `.env.local` (está no `.gitignore`).
 | `NEXT_PUBLIC_FIREBASE_API_KEY` | Sim (para rodar o app) | Pública (browser) | API key do projeto Firebase |
 | `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Sim | Pública | `projeto.firebaseapp.com` |
 | `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Sim | Pública | ID do projeto |
-| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | Sim | Pública | `projeto.appspot.com` |
+| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | Não | Pública | Não usado. Fotos são data URL no Firestore. |
+| `FIREBASE_SERVICE_ACCOUNT_PATH` | Sim para APIs públicas (opção arquivo) | Server-only | Caminho para `firebase-adminsdk.json` |
 | `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Sim | Pública | Sender ID |
 | `NEXT_PUBLIC_FIREBASE_APP_ID` | Sim | Pública | App ID |
 | `FIREBASE_SERVICE_ACCOUNT_JSON` | Sim para APIs públicas (opção A) | Server-only | JSON da service account (Admin SDK) |
@@ -17,9 +18,10 @@ Nunca commite `.env.local` (está no `.gitignore`).
 | `FIREBASE_PRIVATE_KEY` | Sim para APIs públicas (opção B) | Server-only | Chave privada (mantenha `\n` escapados) |
 | `NEXT_PUBLIC_PLATFORM_DOMAIN` | Não | Pública | Domínio base dos sites públicos (default `minhaplataforma.com`) |
 
-O Admin SDK aceita **opção A** (`FIREBASE_SERVICE_ACCOUNT_JSON`) **ou** **opção B**
+O Admin SDK aceita **opção arquivo** (`firebase-adminsdk.json` / `FIREBASE_SERVICE_ACCOUNT_PATH`),
+**opção JSON** (`FIREBASE_SERVICE_ACCOUNT_JSON`) **ou** campos separados
 (`FIREBASE_PROJECT_ID` + `FIREBASE_CLIENT_EMAIL` + `FIREBASE_PRIVATE_KEY`).
-Sem uma das duas, as rotas `/api/public/*` retornam erro 503 — nunca dados fake.
+Sem uma delas, as rotas `/api/public/*` retornam erro 503 — nunca dados fake.
 
 ## Segurança
 

@@ -3,6 +3,7 @@ import { ADMIN_SDK_MISSING_MESSAGE, adminSdkMissingResponse, resolveAdminCredent
 
 const KEYS = [
   "FIREBASE_SERVICE_ACCOUNT_JSON",
+  "FIREBASE_SERVICE_ACCOUNT_PATH",
   "FIREBASE_PROJECT_ID",
   "FIREBASE_CLIENT_EMAIL",
   "FIREBASE_PRIVATE_KEY",
@@ -23,6 +24,7 @@ function restoreEnv() {
 
 function clearEnv() {
   for (const k of KEYS) delete process.env[k];
+  process.env.FIREBASE_SERVICE_ACCOUNT_PATH = "/tmp/agenda-saas-missing-adminsdk.json";
 }
 
 snapshotEnv();
@@ -57,6 +59,27 @@ describe("cancel/book sem Admin SDK", () => {
   it("retorna null quando nenhuma credencial existe (bug histórico do cancel 500)", () => {
     clearEnv();
     expect(resolveAdminCredentials()).toBeNull();
+  });
+
+  it("resolve credenciais a partir de FIREBASE_SERVICE_ACCOUNT_PATH", () => {
+    clearEnv();
+    const fs = require("node:fs") as typeof import("node:fs");
+    const os = require("node:os") as typeof import("node:os");
+    const path = require("node:path") as typeof import("node:path");
+    const file = path.join(os.tmpdir(), `sa-${Date.now()}.json`);
+    fs.writeFileSync(
+      file,
+      JSON.stringify({
+        type: "service_account",
+        project_id: "demo-from-file",
+        client_email: "sa@demo.iam.gserviceaccount.com",
+        private_key: "-----BEGIN PRIVATE KEY-----\\nfake\\n-----END PRIVATE KEY-----\\n",
+      })
+    );
+    process.env.FIREBASE_SERVICE_ACCOUNT_PATH = file;
+    const creds = resolveAdminCredentials();
+    expect(creds?.projectId).toBe("demo-from-file");
+    expect(creds?.serviceAccount).toBeTruthy();
   });
 
   it("aceita FIREBASE_PROJECT_ID + CLIENT_EMAIL + PRIVATE_KEY", () => {

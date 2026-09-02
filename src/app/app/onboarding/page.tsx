@@ -172,6 +172,7 @@ export default function OnboardingPage() {
               }}
             />
           </div>
+          <p className="mt-1 text-xs text-slate-400">A logo é comprimida e salva no Firestore. Sem Cloud Storage pago.</p>
         </div>
         <fieldset className="rounded-lg border border-slate-200 p-4">
           <legend className="px-1 text-sm font-medium text-slate-700">Endereço</legend>

@@ -2,7 +2,7 @@ export interface FirebaseConfig {
   apiKey: string;
   authDomain: string;
   projectId: string;
-  storageBucket: string;
+  storageBucket?: string;
   messagingSenderId: string;
   appId: string;
 }
@@ -15,11 +15,18 @@ export function getFirebaseConfig(): FirebaseConfig | null {
   const messagingSenderId = process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID;
   const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
 
-  if (!apiKey || !authDomain || !projectId || !storageBucket || !messagingSenderId || !appId) {
+  if (!apiKey || !authDomain || !projectId || !messagingSenderId || !appId) {
     return null;
   }
 
-  return { apiKey, authDomain, projectId, storageBucket, messagingSenderId, appId };
+  return {
+    apiKey,
+    authDomain,
+    projectId,
+    storageBucket: storageBucket || undefined,
+    messagingSenderId,
+    appId,
+  };
 }
 
 export function isFirebaseConfigured(): boolean {

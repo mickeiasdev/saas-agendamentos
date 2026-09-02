@@ -9,7 +9,7 @@ seus limites relevantes e as estratégias de economia de custo.
 | --- | --- | --- | --- |
 | Cloud Firestore | 50k leituras/dia, 20k escritas/dia, 20k exclusões/dia, 1 GiB armazenamento | Banco principal | Limite mais crítico |
 | Authentication | 50k usuários MAU | Login/cadastro e-mail/senha | Google opcional |
-| Cloud Storage | 5 GiB, 1 GB/dia download | Logos e fotos | |
+| Cloud Storage | 5 GiB, 1 GB/dia download | **Não usado no MVP** | Ativação extra / plano Blaze em alguns projetos. Fotos vão no Firestore. |
 | Hosting | 10 GB de transferência/mês | Deploy estático | |
 | Cloud Functions | 2M invocações/mês (plano Spark) | Lógica server-only | Usar com moderação |
 

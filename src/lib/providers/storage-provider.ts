@@ -1,6 +1,8 @@
 /**
  * Abstração de armazenamento de arquivos.
- * Provider real inicial: Firebase Storage.
+ * Provider inicial: imagens comprimidas (data URL) gravadas no Firestore.
+ * Firebase Storage fica como opção futura — o plano Spark exigiria ativar
+ * um serviço extra; o MVP não depende dele.
  */
 
 export interface StorageProvider {

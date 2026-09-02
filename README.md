@@ -24,7 +24,7 @@ tudo com **custo inicial próximo de R$ 0**, usando exclusivamente o free tier o
 | Backend | Next.js (API routes) + Firebase Admin SDK (server-only) |
 | Banco | Firebase Cloud Firestore (multi-tenant) |
 | Autenticação | Firebase Authentication (e-mail/senha; Google opcional) |
-| Arquivos | Firebase Storage |
+| Arquivos | Imagens comprimidas no Firestore (sem Cloud Storage pago) |
 | Hosting | Vercel Free ou Firebase Hosting Free |
 
 ## Estrutura de pastas

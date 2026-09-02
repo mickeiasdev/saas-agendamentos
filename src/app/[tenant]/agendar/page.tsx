@@ -295,9 +295,13 @@ export default function BookingPage({
                   setProfessional(null);
                   setStep("professional");
                 }}
-                className="card flex w-full items-center justify-between text-left hover:border-brand-300"
+                className="card flex w-full items-center gap-3 text-left hover:border-brand-300"
               >
-                <div>
+                {s.imageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={s.imageUrl} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" />
+                )}
+                <div className="min-w-0 flex-1">
                   <div className={`font-semibold ${theme.heading}`}>{s.name}</div>
                   {s.description && <div className={`text-sm ${theme.muted}`}>{s.description}</div>}
                 </div>
@@ -324,12 +328,17 @@ export default function BookingPage({
                 }}
                 className="card flex w-full items-center gap-4 text-left hover:border-brand-300"
               >
-                <span
-                  className="flex h-11 w-11 items-center justify-center rounded-full font-bold text-white"
-                  style={{ backgroundColor: p.color }}
-                >
-                  {p.name.charAt(0).toUpperCase()}
-                </span>
+                {p.photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={p.photoUrl} alt="" className="h-11 w-11 shrink-0 rounded-full object-cover" />
+                ) : (
+                  <span
+                    className="flex h-11 w-11 items-center justify-center rounded-full font-bold text-white"
+                    style={{ backgroundColor: p.color }}
+                  >
+                    {p.name.charAt(0).toUpperCase()}
+                  </span>
+                )}
                 <div>
                   <div className={`font-semibold ${theme.heading}`}>{p.name}</div>
                   {p.description && <div className={`text-sm ${theme.muted}`}>{p.description}</div>}

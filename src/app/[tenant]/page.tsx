@@ -88,6 +88,10 @@ export default function PublicSitePage({
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {services.map((s) => (
                 <div key={s.id} className={theme.card}>
+                  {s.imageUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={s.imageUrl} alt="" className="mb-3 h-36 w-full rounded-lg object-cover" />
+                  )}
                   <h3 className={`font-semibold ${theme.heading}`}>{s.name}</h3>
                   {s.description && (
                     <p className={`mt-1 text-sm ${theme.muted}`}>{s.description}</p>
@@ -112,12 +116,21 @@ export default function PublicSitePage({
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {professionals.map((p) => (
                 <div key={p.id} className={`${theme.card} text-center`}>
-                  <span
-                    className="mx-auto flex h-14 w-14 items-center justify-center rounded-full text-xl font-bold text-white"
-                    style={{ backgroundColor: p.color }}
-                  >
-                    {p.name.charAt(0).toUpperCase()}
-                  </span>
+                  {p.photoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={p.photoUrl}
+                      alt=""
+                      className="mx-auto h-14 w-14 rounded-full object-cover"
+                    />
+                  ) : (
+                    <span
+                      className="mx-auto flex h-14 w-14 items-center justify-center rounded-full text-xl font-bold text-white"
+                      style={{ backgroundColor: p.color }}
+                    >
+                      {p.name.charAt(0).toUpperCase()}
+                    </span>
+                  )}
                   <div className={`mt-3 font-semibold ${theme.heading}`}>{p.name}</div>
                   {p.description && (
                     <p className={`mt-1 text-sm ${theme.muted}`}>{p.description}</p>

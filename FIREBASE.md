@@ -9,7 +9,7 @@ para colocar o MVP no ar.
 | --- | --- |
 | Firebase Authentication | Cadastro/login e-mail/senha (Google opcional) |
 | Cloud Firestore | Banco de dados principal (multi-tenant) |
-| Cloud Storage | Logos, fotos de serviços/profissionais |
+| (não usado) Cloud Storage | — | Fotos usam Firestore (data URL comprimido) para evitar o plano pago |
 | Hosting | Opcional — deploy estático (ver DEPLOYMENT.md) |
 | Cloud Functions | Reservado para lógica server-only quando o free tier permitir |
 
@@ -19,10 +19,10 @@ para colocar o MVP no ar.
    (o plano Spark não exige cartão).
 2. **Authentication** → Sign-in method → habilite **E-mail/Senha**. (Google é opcional.)
 3. **Firestore Database** → Criar banco no modo **produção** e defina o local.
-4. **Storage** → Inicie o bucket (regiões padrão são gratuitas).
+4. **Não ative Cloud Storage** neste MVP. Logos, banners e fotos são comprimidos no browser e gravados no Firestore (data URL). O documento do Firestore tem limite de 1 MiB — as imagens ficam bem abaixo disso.
 5. **Configurações do projeto → Seus apps → Web**: registre o app e copie o objeto `firebaseConfig`.
-6. Preencha `.env.local` (veja `ENVIRONMENT.md`).
-7. Publique as regras e os índices (ver seção **Deploy das rules** abaixo).
+6. Preencha `.env.local` (veja `ENVIRONMENT.md`). Coloque o JSON do Admin SDK em `firebase-adminsdk.json` na raiz (projeto experimental).
+7. Publique as regras e os índices do Firestore (ver seção **Deploy das rules** abaixo).
 
 ## Deploy das rules
 
@@ -35,10 +35,10 @@ npx firebase login
 npx firebase use --add
 ```
 
-Publique Firestore rules, índices e Storage rules:
+Publique Firestore rules e índices:
 
 ```bash
-npx firebase deploy --only firestore:rules,firestore:indexes,storage
+npx firebase deploy --only firestore:rules,firestore:indexes
 ```
 
 Ou separadamente:
@@ -46,20 +46,19 @@ Ou separadamente:
 ```bash
 npx firebase deploy --only firestore:rules
 npx firebase deploy --only firestore:indexes
-npx firebase deploy --only storage
 ```
 
 Com o emulador (testes de isolamento multi-tenant):
 
 ```bash
-npx firebase emulators:start --only auth,firestore,storage
+npx firebase emulators:start --only auth,firestore
 ```
 
 ## Regras e índices
 
 - `firestore.rules` — isolamento multi-tenant (ver SECURITY.md).
 - `firestore.indexes.json` — índices compostos usados pelo app.
-- `storage.rules` — upload de logo, banner, imagem de serviço e foto de profissional restrito ao tenant do usuário autenticado. Leitura pública apenas nesses caminhos (site da empresa). Qualquer outro path é negado.
+- `storage.rules` — mantido apenas como referência futura. O MVP **não usa** Cloud Storage.
 
 ## Economia de leituras/escritas
 
