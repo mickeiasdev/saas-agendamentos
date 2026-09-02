@@ -26,6 +26,20 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // ---------- SLUGS (endereço público único) ----------
+    // Documento slugs/{slug} é a trava de unicidade. Create-only.
+    match /slugs/{slug} {
+      allow get: if request.auth != null;
+      allow list: if false;
+      allow create: if request.auth != null
+        && slug.matches('^[a-z0-9]+(-[a-z0-9]+)*$')
+        && slug.size() >= 2
+        && slug.size() <= 48
+        && request.resource.data.tenantId is string
+        && request.resource.data.tenantId.size() > 0;
+      allow update, delete: if false;
+    }
+
     // ---------- TENANTS ----------
     // O documento do tenant contém dados sensíveis (cnpjCpf, ownerUserId,
     // planId, settings, limits). Portanto, ele NÃO é de leitura pública.

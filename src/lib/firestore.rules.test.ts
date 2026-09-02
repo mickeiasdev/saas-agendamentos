@@ -22,6 +22,12 @@ describe("Firestore Rules — isolamento Tenant A -> Tenant B", () => {
     expect(rules).toMatch(/role.status == 'active'/);
   });
 
+  it("trava slugs/{slug} como create-only (endereço público único)", () => {
+    expect(rules).toContain("match /slugs/{slug}");
+    expect(rules).toMatch(/allow list: if false/);
+    expect(rules).toContain("allow update, delete: if false");
+  });
+
   it("impede delete de agendamentos e create público direto no Firestore", () => {
     expect(rules).toMatch(/allow delete: if false/);
     expect(rules).toContain("allow create: if isMember() && hasRole(['TENANT_OWNER', 'TENANT_ADMIN', 'MANAGER', 'PROFESSIONAL'])");
