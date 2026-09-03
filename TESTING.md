@@ -25,7 +25,7 @@ npm run test:watch # modo watch
 ### Testes unitários
 Funções puras (engine de disponibilidade, RBAC, overlap, tema, slug) são as de maior prioridade.
 A suíte `src/lib/phase1.test.ts` cobre o aceite da Fase 1:
-cadastro/empresa/serviço/categoria/profissional/horário/cliente/agendamento/cancelamento/remarcação.
+cadastro/login/senha, empresa, serviço, categoria, profissional, horário, cliente (busca), agendamento, cancelamento e remarcação.
 
 ### Testes de integração (Fase 1)
 Fluxo cadastro → login → empresa → serviço → profissional → horário → cliente →

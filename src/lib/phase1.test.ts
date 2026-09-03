@@ -11,9 +11,18 @@ import { canInviteRole } from "@/lib/invites";
 import { findBlockingOverlaps } from "@/lib/repository/overlap";
 import { publicThemeClasses } from "@/lib/branding/theme";
 import { validateSlotAvailability } from "@/lib/booking/timezone";
+import { generateSlots } from "@/lib/availability/engine";
 import { can } from "@/lib/rbac/roles";
 import { hasAccess } from "@/lib/rbac/membership";
-import type { ProfessionalAvailability, TenantUser } from "@/types";
+import {
+  AUTH_ERRORS,
+  validateLogin,
+  validatePasswordChange,
+  validateRecover,
+  validateSignup,
+} from "@/lib/auth/validation";
+import { matchesCustomerSearch } from "@/lib/repository/customers";
+import type { Customer, ProfessionalAvailability, TenantUser } from "@/types";
 
 const MONDAY = "2030-01-14";
 const customer = { name: "João Silva", phone: "11999999999" };
@@ -75,6 +84,32 @@ function seed(db: FakeFirestore, tenantId: string, slug: string) {
 }
 
 describe("Fase 1 — aceite (cadastro → empresa → CRUD → agendamento → cancel/remarcar)", () => {
+  it("cadastro, login, recuperação e alteração de senha", () => {
+    expect(validateSignup({ name: "", email: "a@b.com", password: "123456", confirm: "123456" })).toBe(
+      AUTH_ERRORS.NAME_REQUIRED
+    );
+    expect(validateSignup({ name: "João", email: "invalido", password: "123456", confirm: "123456" })).toBe(
+      AUTH_ERRORS.EMAIL_REQUIRED
+    );
+    expect(validateSignup({ name: "João", email: "a@b.com", password: "123", confirm: "123" })).toBe(
+      AUTH_ERRORS.PASSWORD_MIN
+    );
+    expect(validateSignup({ name: "João", email: "a@b.com", password: "123456", confirm: "654321" })).toBe(
+      AUTH_ERRORS.PASSWORD_MISMATCH
+    );
+    expect(validateSignup({ name: "João", email: "a@b.com", password: "123456", confirm: "123456" })).toBeNull();
+    expect(validateLogin({ email: "a@b.com", password: "123456" })).toBeNull();
+    expect(validateLogin({ email: "x", password: "123456" })).toBe(AUTH_ERRORS.EMAIL_REQUIRED);
+    expect(validateRecover("a@b.com")).toBeNull();
+    expect(validateRecover("")).toBe(AUTH_ERRORS.EMAIL_REQUIRED);
+    expect(
+      validatePasswordChange({ currentPassword: "", newPassword: "123456", confirm: "123456" })
+    ).toBe(AUTH_ERRORS.CURRENT_PASSWORD_REQUIRED);
+    expect(
+      validatePasswordChange({ currentPassword: "oldpass", newPassword: "123456", confirm: "123456" })
+    ).toBeNull();
+  });
+
   it("slug da empresa e descrição entram na personalização", () => {
     expect(slugify("Barbearia Central")).toBe("barbearia-central");
     const db = new FakeFirestore();
@@ -105,7 +140,7 @@ describe("Fase 1 — aceite (cadastro → empresa → CRUD → agendamento → c
     expect(db.store.get("tenants/tA/customers/cust1")).not.toBe(db.store.get("tenants/tB/customers/cust1"));
   });
 
-  it("agenda: expediente, intervalo, folga, férias, feriado e profissional indisponível", () => {
+  it("agenda: expediente, intervalo, folga, férias, feriado, bloqueio e profissional indisponível", () => {
     const availability: ProfessionalAvailability = {
       id: "av1",
       tenantId: "t1",
@@ -113,12 +148,44 @@ describe("Fase 1 — aceite (cadastro → empresa → CRUD → agendamento → c
       workDays: [{ dayOfWeek: 1, enabled: true, startTime: "09:00", endTime: "18:00", breaks: [{ start: "12:00", end: "13:00" }] }],
       daysOff: ["2030-01-14"],
       vacations: [],
-      blockedDates: [],
+      blockedDates: ["2030-01-21"],
       exceptions: [],
       updatedAt: { seconds: 0, nanoseconds: 0 },
     };
     const instant = new Date("2030-01-14T13:00:00Z");
     expect(validateSlotAvailability({ availability, holidays: [], durationMinutes: 30, instant, tz: "America/Sao_Paulo" }).ok).toBe(false);
+
+    const blocked = generateSlots({
+      availability: { ...availability, daysOff: [] },
+      serviceDurationMinutes: 30,
+      appointments: [],
+      holidays: [],
+      slotIntervalMinutes: 30,
+      date: "2030-01-21",
+    });
+    expect(blocked).toEqual([]);
+
+    const holiday = generateSlots({
+      availability: { ...availability, daysOff: [], blockedDates: [] },
+      serviceDurationMinutes: 30,
+      appointments: [],
+      holidays: [{ id: "h1", tenantId: "t1", date: "2030-01-14", name: "Feriado" }],
+      slotIntervalMinutes: 30,
+      date: "2030-01-14",
+    });
+    expect(holiday).toEqual([]);
+  });
+
+  it("cliente: cadastro, busca por nome/telefone e isolamento de histórico", () => {
+    const maria: Pick<Customer, "name" | "email" | "phone" | "whatsapp"> = {
+      name: "Maria Souza",
+      email: "maria@ex.com",
+      phone: "11988887777",
+      whatsapp: "11988887777",
+    };
+    expect(matchesCustomerSearch(maria, "maria")).toBe(true);
+    expect(matchesCustomerSearch(maria, "8888")).toBe(true);
+    expect(matchesCustomerSearch(maria, "joao")).toBe(false);
   });
 
   it("agendamento, double booking, remarcação e cancelamento", async () => {

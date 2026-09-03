@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { validateRecover } from "@/lib/auth/validation";
 import FirebaseSetupGuide from "@/components/FirebaseSetupGuide";
 
 export default function RecoverPage() {
@@ -18,6 +19,11 @@ export default function RecoverPage() {
     e.preventDefault();
     setError("");
     setMessage("");
+    const invalid = validateRecover(email);
+    if (invalid) {
+      setError(invalid);
+      return;
+    }
     setLoading(true);
     try {
       await resetPassword(email);

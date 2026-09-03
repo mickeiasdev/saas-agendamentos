@@ -71,16 +71,16 @@ describe.skipIf(!runEmulator)("Firestore Rules no emulador — Tenant A não ace
         projectId: "demo-agenda-saas",
         firestore: { rules, host, port },
       });
-    });
+    }, 60_000);
 
     afterAll(async () => {
       await env?.cleanup();
-    });
+    }, 30_000);
 
     beforeEach(async () => {
       await env.clearFirestore();
       await seed(env);
-    });
+    }, 30_000);
 
     it("dono de A lê A e é NEGADO em B", async () => {
       const a = env.authenticatedContext("userA").firestore();

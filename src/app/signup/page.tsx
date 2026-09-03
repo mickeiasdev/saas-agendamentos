@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { validateSignup } from "@/lib/auth/validation";
 import FirebaseSetupGuide from "@/components/FirebaseSetupGuide";
 
 function SignupForm() {
@@ -24,12 +25,9 @@ function SignupForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    if (password.length < 6) {
-      setError("A senha deve ter pelo menos 6 caracteres.");
-      return;
-    }
-    if (password !== confirm) {
-      setError("As senhas não coincidem.");
+    const invalid = validateSignup({ name, email, password, confirm });
+    if (invalid) {
+      setError(invalid);
       return;
     }
     setLoading(true);

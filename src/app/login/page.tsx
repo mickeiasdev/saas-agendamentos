@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { validateLogin } from "@/lib/auth/validation";
 import FirebaseSetupGuide from "@/components/FirebaseSetupGuide";
 
 function LoginForm() {
@@ -22,6 +23,11 @@ function LoginForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    const invalid = validateLogin({ email, password });
+    if (invalid) {
+      setError(invalid);
+      return;
+    }
     setLoading(true);
     try {
       await login(email, password);

@@ -25,7 +25,7 @@ export interface CustomerPage {
   nextCursor: QueryDocumentSnapshot | null;
 }
 
-function matchesSearch(c: Customer, term: string): boolean {
+export function matchesCustomerSearch(c: Pick<Customer, "name" | "email" | "phone" | "whatsapp">, term: string): boolean {
   const t = term.trim().toLowerCase();
   if (!t) return true;
   const digits = t.replace(/\D/g, "");
@@ -48,7 +48,7 @@ export async function listCustomers(
     const snap = await getDocs(query(collectionFor(tenantId), orderBy("name"), limit(500)));
     const items = snap.docs
       .map((d) => ({ id: d.id, ...d.data() }) as Customer)
-      .filter((c) => matchesSearch(c, search))
+      .filter((c) => matchesCustomerSearch(c, search))
       .slice(0, size);
     return { items, nextCursor: null };
   }

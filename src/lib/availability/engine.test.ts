@@ -113,6 +113,22 @@ describe("generateSlots", () => {
     expect(slots).toEqual([]);
   });
 
+  it("remove o dia em data bloqueada", () => {
+    const availability: ProfessionalAvailability = {
+      ...baseAvailability,
+      blockedDates: ["2025-05-05"],
+    };
+    const slots = generateSlots({
+      availability,
+      serviceDurationMinutes: 30,
+      appointments: [],
+      holidays: [],
+      slotIntervalMinutes: 30,
+      date: "2025-05-05",
+    });
+    expect(slots).toEqual([]);
+  });
+
   it("remove o dia em período de férias", () => {
     const availability: ProfessionalAvailability = {
       ...baseAvailability,

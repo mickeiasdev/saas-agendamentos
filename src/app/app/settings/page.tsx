@@ -6,6 +6,7 @@ import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { getFirebaseFirestore } from "@/lib/firebase/client";
 import { useTenant } from "@/lib/tenant/TenantContext";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { validatePasswordChange } from "@/lib/auth/validation";
 import { can } from "@/lib/rbac/roles";
 import { getRoleForTenant } from "@/lib/rbac/membership";
 import { ImageUpload } from "@/components/ui/ImageUpload";
@@ -784,23 +785,16 @@ export default function SettingsPage() {
             e.preventDefault();
             setPassError("");
             setPassMsg("");
-            if (passForm.newPassword.length < 6) {
-              setPassError("A senha deve ter pelo menos 6 caracteres.");
+            const invalid = validatePasswordChange(passForm);
+            if (invalid) {
+              setPassError(invalid);
               return;
             }
-            if (!passForm.currentPassword) {
-                setPassError("Informe a senha atual para reautenticar.");
-                return;
-              }
-              if (passForm.newPassword !== passForm.confirm) {
-                setPassError("As senhas não coincidem.");
-                return;
-              }
-              setPassSaving(true);
-              try {
-                await changePassword(passForm.currentPassword, passForm.newPassword);
-                setPassForm({ currentPassword: "", newPassword: "", confirm: "" });
-                setPassMsg("Senha alterada com sucesso.");
+            setPassSaving(true);
+            try {
+              await changePassword(passForm.currentPassword, passForm.newPassword);
+              setPassForm({ currentPassword: "", newPassword: "", confirm: "" });
+              setPassMsg("Senha alterada com sucesso.");
             } catch (err) {
               setPassError((err as Error).message ?? "Erro ao alterar a senha.");
             } finally {
