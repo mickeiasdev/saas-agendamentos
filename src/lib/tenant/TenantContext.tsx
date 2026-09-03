@@ -14,6 +14,7 @@ import { getFirebaseFirestore } from "@/lib/firebase/client";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { getPlanLimits, PLAN_ID } from "@/lib/plans";
 import { claimExactSlug, SLUG_TAKEN_MESSAGE } from "@/lib/tenant/uniqueSlug";
+import { omitUndefined } from "@/lib/firestore/omitUndefined";
 import type { Tenant, TenantUser } from "@/types";
 
 export interface TenantState {
@@ -198,9 +199,9 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         const slugRef = doc(db, "slugs", slug);
         const locked = await tx.get(slugRef);
         if (locked.exists()) throw new Error(SLUG_TAKEN_MESSAGE);
-        tx.set(tenantRef, tenant);
+        tx.set(tenantRef, omitUndefined(tenant));
         tx.set(slugRef, { tenantId, createdAt: now });
-        tx.set(doc(db, "tenant_users", `${user.uid}_${tenantId}`), member);
+        tx.set(doc(db, "tenant_users", `${user.uid}_${tenantId}`), omitUndefined(member));
         tx.set(doc(db, "users", user.uid), { activeTenantId: tenantId }, { merge: true });
       });
       setActiveTenantId(tenantId);

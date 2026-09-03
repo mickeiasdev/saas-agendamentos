@@ -21,6 +21,7 @@ import { getFirebaseAuth, getFirebaseFirestore } from "@/lib/firebase/client";
 import { isFirebaseConfigured } from "@/lib/firebase/config";
 import { authErrorCode, mapAuthError } from "@/lib/auth/errors";
 import { isPopupFallbackError } from "@/lib/auth/google";
+import { omitUndefined } from "@/lib/firestore/omitUndefined";
 import type { UserProfile } from "@/types";
 
 export interface AuthState {
@@ -50,14 +51,14 @@ async function createProfile(
   const ref = doc(db, "users", uid);
   const snap = await getDoc(ref);
   if (snap.exists()) return;
-  const profile: UserProfile = {
+  const profile = omitUndefined({
     uid,
     email,
     displayName,
     photoUrl,
-    platformRole: "USER",
+    platformRole: "USER" as const,
     createdAt: serverTimestamp() as never,
-  };
+  });
   await setDoc(ref, profile);
 }
 
