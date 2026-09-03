@@ -3,6 +3,10 @@
 Este projeto usa o **plano Spark (free tier oficial)** do Firebase. Nada de planos pagos
 para colocar o MVP no ar.
 
+Projeto ativo: **experimento-saas-agendamento** (`experimento-saas-agendamento.firebaseapp.com`).
+A config web pública está em `src/lib/firebase/config.ts` (fallback) e em `.env.local`.
+O Admin SDK lê `firebase-adminsdk.json` na raiz.
+
 ## Serviços utilizados
 
 | Serviço | Uso |
@@ -21,7 +25,10 @@ para colocar o MVP no ar.
 3. **Firestore Database** → Criar banco no modo **produção** e defina o local.
 4. **Não ative Cloud Storage** neste MVP. Logos, banners e fotos são comprimidos no browser e gravados no Firestore (data URL). O documento do Firestore tem limite de 1 MiB — as imagens ficam bem abaixo disso.
 5. **Configurações do projeto → Seus apps → Web**: registre o app e copie o objeto `firebaseConfig`.
-6. Preencha `.env.local` (veja `ENVIRONMENT.md`). Coloque o JSON do Admin SDK em `firebase-adminsdk.json` na raiz (projeto experimental).
+6. Preencha `.env.local` (veja `ENVIRONMENT.md`) se quiser sobrescrever o fallback.
+   O JSON do Admin SDK fica em `firebase-adminsdk.json` na raiz.
+   Se o Admin SDK retornar `invalid_grant` / JWT inválido, gere uma **nova chave** em
+   Console → Configurações do projeto → Contas de serviço → Gerar nova chave privada.
 7. Publique as regras e os índices do Firestore (ver seção **Deploy das rules** abaixo).
 
 ## Deploy das rules
