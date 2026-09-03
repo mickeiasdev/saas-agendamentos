@@ -22,7 +22,9 @@ O primeiro usuário (ou o e-mail em `PLATFORM_OWNER_EMAIL`) vira `PLATFORM_OWNER
 
 1. Acesse [console.firebase.google.com](https://console.firebase.google.com) e crie um projeto
    (o plano Spark não exige cartão).
-2. **Authentication** → Sign-in method → habilite **E-mail/Senha**. (Google é opcional.)
+2. **Authentication** → Sign-in method → habilite **E-mail/Senha** e **Google**.
+   Em Google, use o projeto GCP associado, adicione o e-mail de suporte e autorize os
+   domínios (`localhost`, `*.monkeycode-ai.live`, o domínio de produção).
 3. **Firestore Database** → Criar banco no modo **produção** e defina o local.
 4. **Não ative Cloud Storage** neste MVP. Logos, banners e fotos são comprimidos no browser e gravados no Firestore (data URL). O documento do Firestore tem limite de 1 MiB — as imagens ficam bem abaixo disso.
 5. **Configurações do projeto → Seus apps → Web**: registre o app e copie o objeto `firebaseConfig`.

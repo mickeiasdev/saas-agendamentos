@@ -121,8 +121,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             return (
               <Link
                 key={item.href}
-                href={item.href}
-                className={cn(
+                  href={item.href}
+                  data-testid={`nav-${item.href.replace(/\//g, "-").replace(/^-/, "")}`}
+                  className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                   active
                     ? "bg-brand-50 text-brand-700"
@@ -138,7 +139,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <div className="mb-2 truncate text-sm font-medium text-slate-700">
             {user.email}
           </div>
-          <button
+            <button
+            data-testid="logout"
             onClick={async () => {
               await logout();
               router.replace("/");
@@ -196,6 +198,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <Link
                   key={item.href}
                   href={item.href}
+                  data-testid={`nav-${item.href.replace(/\//g, "-").replace(/^-/, "")}`}
                   onClick={() => setMenuOpen(false)}
                   className={cn(
                     "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium",

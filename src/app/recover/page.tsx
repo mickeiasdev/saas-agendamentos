@@ -45,11 +45,11 @@ export default function RecoverPage() {
         <form onSubmit={handleSubmit} className="card space-y-4">
           <div>
             <label className="label" htmlFor="email">E-mail</label>
-            <input id="email" type="email" required className="input" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input id="email" type="email" required data-testid="recover-email" className="input" value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
-          {message && <p className="text-sm text-green-600">{message}</p>}
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <button type="submit" className="btn-primary w-full" disabled={loading}>
+          {message && <p data-testid="recover-success" className="text-sm text-green-600">{message}</p>}
+          {error && <p data-testid="recover-error" className="text-sm text-red-600">{error}</p>}
+          <button type="submit" data-testid="recover-submit" className="btn-primary w-full" disabled={loading}>
             {loading ? "Enviando..." : "Enviar link"}
           </button>
         </form>

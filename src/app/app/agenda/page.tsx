@@ -138,7 +138,7 @@ export default function AgendaPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Agenda</h1>
+          <h1 data-testid="agenda-title" className="text-2xl font-bold text-slate-900">Agenda</h1>
           <p className="text-sm text-slate-500">Visualize e gerencie a agenda do seu negócio.</p>
         </div>
         <div className="flex items-center gap-2">
@@ -152,6 +152,7 @@ export default function AgendaPage() {
             Próximo
           </button>
           <select
+            data-testid="agenda-view"
             className="input w-28 py-1.5"
             value={view}
             onChange={(e) => setView(e.target.value as ViewMode)}

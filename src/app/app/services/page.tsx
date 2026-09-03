@@ -125,7 +125,7 @@ export default function ServicesPage() {
           <h1 className="text-2xl font-bold text-slate-900">Serviços</h1>
           <p className="text-sm text-slate-500">Gerencie o catálogo de serviços oferecidos.</p>
         </div>
-        <button onClick={openCreate} className="btn-primary">
+        <button onClick={openCreate} data-testid="service-create" className="btn-primary">
           Novo serviço
         </button>
       </div>
@@ -221,6 +221,7 @@ export default function ServicesPage() {
             <label className="label">Nome *</label>
             <input
               required
+              data-testid="service-name"
               className="input"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -336,7 +337,7 @@ export default function ServicesPage() {
             <button type="button" onClick={() => setModalOpen(false)} className="btn-secondary">
               Cancelar
             </button>
-            <button type="submit" className="btn-primary" disabled={saving}>
+            <button type="submit" data-testid="service-save" className="btn-primary" disabled={saving}>
               {saving ? "Salvando..." : "Salvar"}
             </button>
           </div>

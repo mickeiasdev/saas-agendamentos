@@ -22,7 +22,7 @@ export default function FirebaseSetupGuide() {
           </li>
           <li>Em Configurações do projeto → Seus apps → Web, registre um app e copie a configuração.</li>
           <li>Copie o arquivo <code className="rounded bg-slate-100 px-1">.env.example</code> para <code className="rounded bg-slate-100 px-1">.env.local</code> e preencha as variáveis <code className="rounded bg-slate-100 px-1">NEXT_PUBLIC_FIREBASE_*</code>.</li>
-          <li>Ative Authentication (E-mail/Senha) e Cloud Firestore no console. Cloud Storage não é necessário — fotos são comprimidas e salvas no Firestore.</li>
+          <li>Ative Authentication (E-mail/Senha e Google) e Cloud Firestore no console. Cloud Storage não é necessário — fotos são comprimidas e salvas no Firestore.</li>
           <li>Aplique as regras de segurança em <code className="rounded bg-slate-100 px-1">firestore.rules</code>.</li>
         </ol>
         <p className="mt-6 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">

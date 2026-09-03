@@ -120,7 +120,7 @@ export default function ProfessionalsPage() {
             Equipe que executa os serviços. Configure a disponibilidade na aba específica.
           </p>
         </div>
-        <button onClick={openCreate} className="btn-primary">
+        <button onClick={openCreate} data-testid="professional-create" className="btn-primary">
           Novo profissional
         </button>
       </div>
@@ -193,6 +193,7 @@ export default function ProfessionalsPage() {
             <label className="label">Nome *</label>
             <input
               required
+              data-testid="professional-name"
               className="input"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -277,7 +278,7 @@ export default function ProfessionalsPage() {
             <button type="button" onClick={() => setModalOpen(false)} className="btn-secondary">
               Cancelar
             </button>
-            <button type="submit" className="btn-primary" disabled={saving}>
+            <button type="submit" data-testid="professional-save" className="btn-primary" disabled={saving}>
               {saving ? "Salvando..." : "Salvar"}
             </button>
           </div>

@@ -100,7 +100,7 @@ export default function OnboardingPage() {
           Seu ambiente SaaS com site público, agenda, clientes e muito mais.
         </p>
       </div>
-      <form onSubmit={handleSubmit} className="card space-y-4">
+      <form onSubmit={handleSubmit} data-testid="onboarding-form" className="card space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="label" htmlFor="name">Nome da empresa *</label>
@@ -108,6 +108,7 @@ export default function OnboardingPage() {
               id="name"
               required
               className="input"
+              data-testid="onboarding-name"
               value={name}
               onChange={(e) => {
                 setName(e.target.value);
@@ -154,6 +155,7 @@ export default function OnboardingPage() {
             id="slug"
             required
             className="input"
+            data-testid="onboarding-slug"
             value={slugTouched ? slug : previewSlug}
             onChange={(e) => {
               setSlugTouched(true);
@@ -243,8 +245,8 @@ export default function OnboardingPage() {
             </div>
           </div>
         </fieldset>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button type="submit" className="btn-primary w-full" disabled={loading}>
+        {error && <p data-testid="onboarding-error" className="text-sm text-red-600">{error}</p>}
+        <button type="submit" data-testid="onboarding-submit" className="btn-primary w-full" disabled={loading}>
           {loading ? "Criando..." : "Criar empresa e começar"}
         </button>
       </form>

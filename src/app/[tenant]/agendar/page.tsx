@@ -304,6 +304,7 @@ export default function BookingPage({
             {services.map((s) => (
               <button
                 key={s.id}
+                data-testid={`book-service-${s.id}`}
                 onClick={() => {
                   setService(s);
                   setProfessional(null);
@@ -336,6 +337,7 @@ export default function BookingPage({
             {eligibleProfessionals.map((p) => (
               <button
                 key={p.id}
+                data-testid={`book-professional-${p.id}`}
                 onClick={() => {
                   setProfessional(p);
                   setStep("datetime");
@@ -373,6 +375,7 @@ export default function BookingPage({
                 <label className="label">Data</label>
                 <input
                   type="date"
+                  data-testid="book-date"
                   className="input"
                   min={new Date().toISOString().split("T")[0]}
                   value={date}
@@ -405,6 +408,7 @@ export default function BookingPage({
                       <button
                         key={time}
                         type="button"
+                        data-testid={`book-slot-${time}`}
                         onClick={() => setSelectedTime(time)}
                         className="rounded-lg border px-2 py-2 text-sm font-medium"
                         style={{
@@ -422,6 +426,7 @@ export default function BookingPage({
             )}
 
             <button
+              data-testid="book-continue"
               className="btn-primary w-full"
               disabled={!selectedTime}
               onClick={() => setStep("customer")}
@@ -441,6 +446,7 @@ export default function BookingPage({
               <label className="label">Nome completo *</label>
               <input
                 required
+                data-testid="book-customer-name"
                 className="input"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -451,6 +457,7 @@ export default function BookingPage({
                 <label className="label">WhatsApp *</label>
                 <input
                   required
+                  data-testid="book-customer-phone"
                   className="input"
                   placeholder="(11) 99999-9999"
                   value={form.phone}
@@ -484,7 +491,7 @@ export default function BookingPage({
               <button type="button" className="btn-secondary" onClick={() => setStep("datetime")}>
                 Voltar
               </button>
-              <button type="submit" className="btn-primary flex-1">
+              <button type="submit" data-testid="book-review" className="btn-primary flex-1">
                 Revisar e continuar
               </button>
             </div>
@@ -548,7 +555,7 @@ export default function BookingPage({
               <button type="button" className="btn-secondary" onClick={() => setStep("customer")}>
                 Voltar
               </button>
-              <button type="submit" className="btn-primary flex-1" disabled={creating}>
+              <button type="submit" data-testid="book-confirm" className="btn-primary flex-1" disabled={creating}>
                 {creating ? "Confirmando..." : "Confirmar agendamento"}
               </button>
             </div>
@@ -563,7 +570,7 @@ export default function BookingPage({
             >
               {doneAction === "cancelled" ? "X" : "OK"}
             </div>
-              <h1 className={`mt-4 text-2xl font-bold ${theme.heading}`}>
+              <h1 data-testid="book-done" className={`mt-4 text-2xl font-bold ${theme.heading}`}>
               {doneAction === "cancelled"
                 ? "Agendamento cancelado"
                 : doneAction === "rescheduled"

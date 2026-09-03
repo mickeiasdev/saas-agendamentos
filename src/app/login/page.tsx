@@ -6,6 +6,7 @@ import { Suspense, useState } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { validateLogin } from "@/lib/auth/validation";
 import FirebaseSetupGuide from "@/components/FirebaseSetupGuide";
+import { GoogleButton } from "@/components/auth/GoogleButton";
 
 function LoginForm() {
   const { login, configured } = useAuth();
@@ -46,13 +47,14 @@ function LoginForm() {
           <h1 className="text-3xl font-bold text-slate-900">Agenda SaaS</h1>
           <p className="mt-1 text-sm text-slate-500">Entre na sua conta</p>
         </div>
-        <form onSubmit={handleSubmit} className="card space-y-4">
+        <form onSubmit={handleSubmit} data-testid="login-form" className="card space-y-4">
           <div>
             <label className="label" htmlFor="email">E-mail</label>
             <input
               id="email"
               type="email"
               required
+              data-testid="login-email"
               className="input"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -64,15 +66,20 @@ function LoginForm() {
               id="password"
               type="password"
               required
+              data-testid="login-password"
               className="input"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <button type="submit" className="btn-primary w-full" disabled={loading}>
+          {error && <p data-testid="login-error" className="text-sm text-red-600">{error}</p>}
+          <button type="submit" data-testid="login-submit" className="btn-primary w-full" disabled={loading}>
             {loading ? "Entrando..." : "Entrar"}
           </button>
+          <div className="relative py-1 text-center text-xs text-slate-400">
+            <span className="relative z-10 bg-white px-2">ou</span>
+          </div>
+          <GoogleButton onSuccess={() => router.push(next.startsWith("/") ? next : "/app")} />
         </form>
         <div className="mt-4 flex items-center justify-between text-sm">
           <Link href="/recover" className="text-brand-600 hover:underline">

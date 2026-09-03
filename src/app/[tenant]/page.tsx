@@ -282,6 +282,7 @@ export default function PublicSitePage({
           </div>
           <Link
             href={`/${slug}/agendar`}
+            data-testid="public-book"
             className="rounded-lg px-4 py-2 text-sm font-semibold text-white"
             style={{ backgroundColor: primary }}
           >

@@ -7,6 +7,7 @@ import { getFirebaseFirestore } from "@/lib/firebase/client";
 import { useTenant } from "@/lib/tenant/TenantContext";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { validatePasswordChange } from "@/lib/auth/validation";
+import { hasPasswordProvider } from "@/lib/auth/google";
 import { can } from "@/lib/rbac/roles";
 import { getRoleForTenant } from "@/lib/rbac/membership";
 import { ImageUpload } from "@/components/ui/ImageUpload";
@@ -779,6 +780,7 @@ export default function SettingsPage() {
         )}
         {emailMsg && <p className="text-sm text-green-600">{emailMsg}</p>}
 
+        {hasPasswordProvider(user) ? (
         <form
           className="space-y-4"
           onSubmit={async (e) => {
@@ -843,6 +845,11 @@ export default function SettingsPage() {
             </button>
           </div>
         </form>
+        ) : (
+          <p className="text-sm text-slate-500">
+            Esta conta entra com Google. A senha é gerenciada pela sua conta Google.
+          </p>
+        )}
       </div>
     </div>
   );

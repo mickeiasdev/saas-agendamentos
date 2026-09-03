@@ -21,6 +21,7 @@ import {
   validateRecover,
   validateSignup,
 } from "@/lib/auth/validation";
+import { hasGoogleProvider, hasPasswordProvider } from "@/lib/auth/google";
 import { matchesCustomerSearch } from "@/lib/repository/customers";
 import type { Customer, ProfessionalAvailability, TenantUser } from "@/types";
 
@@ -108,6 +109,12 @@ describe("Fase 1 — aceite (cadastro → empresa → CRUD → agendamento → c
     expect(
       validatePasswordChange({ currentPassword: "oldpass", newPassword: "123456", confirm: "123456" })
     ).toBeNull();
+  });
+
+  it("login Google é opcional e não substitui e-mail/senha", () => {
+    expect(typeof hasGoogleProvider).toBe("function");
+    expect(hasGoogleProvider({ providerData: [{ providerId: "google.com" }] })).toBe(true);
+    expect(hasPasswordProvider({ providerData: [{ providerId: "password" }] })).toBe(true);
   });
 
   it("slug da empresa e descrição entram na personalização", () => {

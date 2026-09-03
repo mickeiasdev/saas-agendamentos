@@ -1,10 +1,11 @@
 # Testes
 
-Framework: **Vitest** + Testing Library.
+Framework: **Vitest** + Testing Library + **Playwright** (E2E).
 
 ```bash
 npm test           # executa uma vez
 npm run test:watch # modo watch
+npm run test:e2e   # Playwright (cadastro, empresa, CRUDs, agenda, Google)
 ```
 
 ## Cobertura atual
@@ -41,6 +42,19 @@ Tenant A → tenta acessar dados do Tenant B → NEGADO
 ```
 Verificar em: Firestore Rules no emulador (`src/lib/firestore.rules.emulator.test.ts`),
 API pública (`src/lib/booking/server.test.ts`), membership (`src/lib/rbac/membership.test.ts`).
+
+### E2E (Fase 1)
+Playwright cobre o aceite da Fase 1 contra o Firebase real (`.env.local`):
+
+```bash
+npx playwright install --with-deps chromium
+npm run test:e2e
+```
+
+- `e2e/phase1.spec.ts`: cadastro → empresa → categoria → profissional → serviço → cliente → disponibilidade → agenda → login → site público.
+- `e2e/google-login.spec.ts`: botão Google no login/cadastro e início do fluxo OAuth.
+
+O clique real no Google abre o popup da Google. Sem uma conta de teste OAuth no CI, o teste aceita popup, redirect ou mensagem de provedor não habilitado / domínio não autorizado.
 
 ### E2E (Fase 3)
 Cadastro → empresa → serviço → profissional → horário → site → cliente →

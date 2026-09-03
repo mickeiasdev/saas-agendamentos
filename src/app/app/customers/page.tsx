@@ -147,7 +147,7 @@ export default function CustomersPage() {
             Base de clientes com tags, frequência, histórico e total gasto.
           </p>
         </div>
-        <button onClick={openCreate} className="btn-primary">
+        <button onClick={openCreate} data-testid="customer-create" className="btn-primary">
           Novo cliente
         </button>
       </div>
@@ -248,6 +248,7 @@ export default function CustomersPage() {
             <label className="label">Nome *</label>
             <input
               required
+              data-testid="customer-name"
               className="input"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -314,7 +315,7 @@ export default function CustomersPage() {
             <button type="button" onClick={() => setModalOpen(false)} className="btn-secondary">
               Cancelar
             </button>
-            <button type="submit" className="btn-primary" disabled={saving}>
+            <button type="submit" data-testid="customer-save" className="btn-primary" disabled={saving}>
               {saving ? "Salvando..." : "Salvar"}
             </button>
           </div>

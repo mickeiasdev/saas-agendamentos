@@ -438,7 +438,7 @@ export default function AvailabilityPage() {
           </div>
 
           <div className="flex items-center gap-4">
-            <button type="submit" className="btn-primary" disabled={saving}>
+            <button type="submit" data-testid="availability-save" className="btn-primary" disabled={saving}>
               {saving ? "Salvando..." : "Salvar disponibilidade"}
             </button>
             {saved && <span className="text-sm text-green-600">Disponibilidade salva.</span>}

@@ -82,7 +82,7 @@ export default function CategoriesPage() {
           <h1 className="text-2xl font-bold text-slate-900">Categorias</h1>
           <p className="text-sm text-slate-500">Organize seus serviços em categorias.</p>
         </div>
-        <button onClick={openCreate} className="btn-primary">
+        <button onClick={openCreate} data-testid="category-create" className="btn-primary">
           Nova categoria
         </button>
       </div>
@@ -126,6 +126,7 @@ export default function CategoriesPage() {
             <label className="label">Nome *</label>
             <input
               required
+              data-testid="category-name"
               className="input"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -145,7 +146,7 @@ export default function CategoriesPage() {
             <button type="button" onClick={() => setModalOpen(false)} className="btn-secondary">
               Cancelar
             </button>
-            <button type="submit" className="btn-primary" disabled={saving}>
+            <button type="submit" data-testid="category-save" className="btn-primary" disabled={saving}>
               {saving ? "Salvando..." : "Salvar"}
             </button>
           </div>
