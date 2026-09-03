@@ -14,6 +14,8 @@ interface PublicTenant {
   description?: string;
   segmentId?: string;
   status: string;
+  logoUrl?: string;
+  bannerUrl?: string;
   branding: Tenant["branding"];
   phone?: string;
   whatsapp?: string;
@@ -96,6 +98,8 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
       description: raw.description,
       segmentId: raw.segmentId,
       status: raw.status,
+      logoUrl: raw.logoUrl,
+      bannerUrl: raw.bannerUrl,
       branding: raw.branding,
       phone: raw.phone,
       whatsapp: raw.whatsapp,

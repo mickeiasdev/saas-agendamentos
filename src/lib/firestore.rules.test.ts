@@ -38,4 +38,16 @@ describe("Firestore Rules — isolamento Tenant A -> Tenant B", () => {
     expect(rules).toMatch(/allow delete: if false/);
     expect(rules).toContain("allow create: if isMember() && hasRole(['TENANT_OWNER', 'TENANT_ADMIN', 'MANAGER', 'PROFESSIONAL'])");
   });
+
+  it("trava platformRole no perfil (cliente não se promove)", () => {
+    expect(rules).toContain("request.resource.data.platformRole == 'USER'");
+    expect(rules).toContain("request.resource.data.platformRole == resource.data.platformRole");
+    expect(rules).toContain("match /platform/{docId}");
+  });
+
+  it("só TENANT_OWNER/TENANT_ADMIN atualizam o tenant e não alteram status/planId", () => {
+    expect(rules).toContain("hasRole(['TENANT_OWNER', 'TENANT_ADMIN'])");
+    expect(rules).toContain("request.resource.data.status == resource.data.status");
+    expect(rules).toContain("request.resource.data.planId == resource.data.planId");
+  });
 });

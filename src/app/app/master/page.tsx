@@ -147,7 +147,7 @@ export default function MasterPage() {
       <div className="card">
         <h1 className="text-xl font-bold text-slate-900">Acesso negado</h1>
         <p className="mt-2 text-sm text-slate-600">
-          Este painel é restrito a administradores da plataforma.
+          Este painel é restrito a PLATFORM_OWNER e PLATFORM_ADMIN. O primeiro usuário da plataforma (ou o e-mail em PLATFORM_OWNER_EMAIL) é promovido automaticamente.
         </p>
       </div>
     );

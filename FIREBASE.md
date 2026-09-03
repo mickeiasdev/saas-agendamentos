@@ -6,6 +6,7 @@ para colocar o MVP no ar.
 Projeto ativo: **experimento-saas-agendamento** (`experimento-saas-agendamento.firebaseapp.com`).
 A config web pública está em `src/lib/firebase/config.ts` (fallback) e em `.env.local`.
 O Admin SDK lê `firebase-adminsdk.json` na raiz.
+O primeiro usuário (ou o e-mail em `PLATFORM_OWNER_EMAIL`) vira `PLATFORM_OWNER` via `/api/app/bootstrap`.
 
 ## Serviços utilizados
 

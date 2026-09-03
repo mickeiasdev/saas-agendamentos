@@ -62,15 +62,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const isOnboarding = pathname === "/app/onboarding";
   const isSettings = pathname === "/app/settings";
-  if (!activeTenant && !isOnboarding && !isSettings) {
-    router.replace("/app/onboarding");
+  const isMaster = pathname === "/app/master" || pathname.startsWith("/app/master/");
+  const isPlatformAdmin = can(profile?.platformRole as never, "master.view");
+  if (!activeTenant && !isOnboarding && !isSettings && !isMaster) {
+    router.replace(isPlatformAdmin ? "/app/master" : "/app/onboarding");
     return null;
   }
 
   const membership = memberships.find((m) => m.tenantId === activeTenantId);
   const role = membership?.role;
+  const platformRole = profile?.platformRole as never;
 
-  const visibleItems = NAV_ITEMS.filter((item) => !item.permission || can(role, item.permission));
+  const visibleItems = NAV_ITEMS.filter((item) => {
+    if (item.permission?.startsWith("master.")) return can(platformRole, item.permission);
+    if (!activeTenant) return item.href === "/app/settings";
+    if (!item.permission) return true;
+    return can(role, item.permission);
+  });
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -205,7 +213,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         )}
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
+        <main className="flex-1 p-4 sm:p-6 lg:p-8">
+          {user.emailVerified === false && (
+            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Confirme seu e-mail para proteger a conta. O link foi enviado para {user.email}. Reenvie em Configurações.
+            </div>
+          )}
+          {children}
+        </main>
       </div>
     </div>
   );

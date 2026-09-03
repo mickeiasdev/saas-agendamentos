@@ -62,5 +62,7 @@ describe("hierarquia e permissões relevantes ao isolamento", () => {
   it("papel de plataforma acessa o master, mas não é membro de tenant", () => {
     expect(can("PLATFORM_ADMIN", "master.view")).toBe(true);
     expect(getRoleForTenant([], TENANT_A)).toBeUndefined();
+    expect(hasAccess([], TENANT_A, "master.view", "PLATFORM_ADMIN")).toBe(true);
+    expect(hasAccess([], TENANT_A, "service.manage", "PLATFORM_ADMIN")).toBe(false);
   });
 });

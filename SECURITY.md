@@ -8,6 +8,7 @@ membro ativo (`tenant_users/{uid_tenantId}`).
 
 - Membros ativos leem/gerenciam as subcoleções do seu tenant.
 - O dono do tenant (TENANT_OWNER) tem privilégios administrativos.
+- `platformRole` não pode ser elevado no cliente; o bootstrap (`/api/app/bootstrap`) promove o primeiro usuário (ou `PLATFORM_OWNER_EMAIL`) via Admin SDK.
 - Convites de papéis (`TENANT_ADMIN`, `MANAGER`, `PROFESSIONAL`, `CUSTOMER`) passam pela API (Admin SDK); o cliente só cria `TENANT_OWNER` no onboarding.
 - Nenhum usuário de Tenant A consegue ler documentos de Tenant B (coberto por `npm run test:rules`).
 - O site público **não** lê o Firestore no cliente: consome a API

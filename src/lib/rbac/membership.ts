@@ -25,6 +25,7 @@ export function hasAccess(
   permission: Permission,
   platformRole?: Role
 ): boolean {
+  if (permission.startsWith("master.")) return can(platformRole, permission);
   const member = getRoleForTenant(memberships, tenantId);
   if (!member || member.status !== "active") return false;
   return can(member.role, permission);

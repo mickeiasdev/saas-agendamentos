@@ -54,6 +54,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const bootstrapPlatformRole = useCallback(async (u: User) => {
+    try {
+      const token = await u.getIdToken();
+      const res = await fetch("/api/app/bootstrap", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+    } catch {
+      return;
+    }
+  }, []);
+
   const loadProfile = useCallback(async (uid: string) => {
     const db = getFirebaseFirestore();
     const snap = await getDoc(doc(db, "users", uid));
@@ -72,6 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(u);
       if (u) {
         await createProfile(u.uid, u.email ?? "", u.displayName ?? undefined);
+        await bootstrapPlatformRole(u);
         await loadProfile(u.uid);
       } else {
         setProfile(null);
@@ -79,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
     return () => unsub();
-  }, [configured, loadProfile]);
+  }, [configured, loadProfile, bootstrapPlatformRole]);
 
   const login = useCallback(async (email: string, password: string) => {
     await signInWithEmailAndPassword(getFirebaseAuth(), email, password);
@@ -91,13 +105,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await updateProfile(cred.user, { displayName });
       await sendEmailVerification(cred.user);
       await createProfile(cred.user.uid, email, displayName);
+      await bootstrapPlatformRole(cred.user);
       const db = getFirebaseFirestore();
       const snap = await getDoc(doc(db, "users", cred.user.uid));
       const p = snap.data() as UserProfile;
       setProfile(p);
       return p;
     },
-    []
+    [bootstrapPlatformRole]
   );
 
   const logout = useCallback(async () => {

@@ -35,9 +35,13 @@ describe("can", () => {
     expect(can("CUSTOMER", "service.manage")).toBe(false);
   });
 
-  it("MANAGER pode gerenciar clientes e agendamentos", () => {
+  it("MANAGER pode gerenciar clientes, agendamentos, serviços e horários", () => {
     expect(can("MANAGER", "customer.manage")).toBe(true);
     expect(can("MANAGER", "appointment.manage")).toBe(true);
+    expect(can("MANAGER", "service.manage")).toBe(true);
+    expect(can("MANAGER", "category.manage")).toBe(true);
+    expect(can("MANAGER", "professional.manage")).toBe(true);
+    expect(can("MANAGER", "availability.manage")).toBe(true);
   });
 
   it("PROFESSIONAL pode ver clientes mas não gerenciá-los", () => {
@@ -51,9 +55,11 @@ describe("can", () => {
     expect(can("TENANT_OWNER", "team.manage")).toBe(true);
   });
 
-  it("TENANT_ADMIN convida equipe; MANAGER não", () => {
+  it("TENANT_ADMIN convida equipe e personaliza o tenant; MANAGER não", () => {
     expect(can("TENANT_ADMIN", "team.manage")).toBe(true);
+    expect(can("TENANT_ADMIN", "settings.manage")).toBe(true);
     expect(can("MANAGER", "team.manage")).toBe(false);
+    expect(can("MANAGER", "settings.manage")).toBe(false);
   });
 
   it("TENANT_ADMIN gerencia cupons, promoções, fidelidade e financeiro", () => {

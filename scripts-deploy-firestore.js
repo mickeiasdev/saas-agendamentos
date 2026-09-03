@@ -60,10 +60,12 @@ async function main() {
   const rulesetName = created.json.name;
   const release = await req(
     "PATCH",
-    `https://firebaserules.googleapis.com/v1/projects/${PROJECT}/releases/cloud.firestore?updateMask=rulesetName`,
+    `https://firebaserules.googleapis.com/v1/projects/${PROJECT}/releases/cloud.firestore`,
     {
-      name: `projects/${PROJECT}/releases/cloud.firestore`,
-      rulesetName,
+      release: {
+        name: `projects/${PROJECT}/releases/cloud.firestore`,
+        rulesetName,
+      },
     }
   );
   if (!release.ok && release.status === 404) {

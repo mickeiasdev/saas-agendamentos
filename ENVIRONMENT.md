@@ -17,6 +17,7 @@ Nunca commite `.env.local` (está no `.gitignore`).
 | `FIREBASE_CLIENT_EMAIL` | Sim para APIs públicas (opção B) | Server-only | E-mail da service account |
 | `FIREBASE_PRIVATE_KEY` | Sim para APIs públicas (opção B) | Server-only | Chave privada (mantenha `\n` escapados) |
 | `NEXT_PUBLIC_PLATFORM_DOMAIN` | Não | Pública | Domínio base dos sites públicos (default `minhaplataforma.com`) |
+| `PLATFORM_OWNER_EMAIL` | Não | Server-only | E-mail promovido a PLATFORM_OWNER no bootstrap. Se vazio, o primeiro usuário vira dono. |
 
 O Admin SDK aceita **opção arquivo** (`firebase-adminsdk.json` / `FIREBASE_SERVICE_ACCOUNT_PATH`),
 **opção JSON** (`FIREBASE_SERVICE_ACCOUNT_JSON`) **ou** campos separados

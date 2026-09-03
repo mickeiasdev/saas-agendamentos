@@ -162,4 +162,15 @@ describe.skipIf(!runEmulator)("Firestore Rules no emulador — Tenant A não ace
         })
       );
     });
+
+    it("usuário não se promove a PLATFORM_OWNER no cliente", async () => {
+      const a = env.authenticatedContext("userA").firestore();
+      await assertFails(
+        setDoc(doc(a, "users", "userA"), {
+          uid: "userA",
+          email: "a@tena.com",
+          platformRole: "PLATFORM_OWNER",
+        })
+      );
+    });
   });

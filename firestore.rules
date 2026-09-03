@@ -10,10 +10,19 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ---------- USUÁRIOS ----------
-    // Cada usuário pode ler/editar apenas o próprio perfil.
+    // Cada usuário lê/edita o próprio perfil.
+    // platformRole NÃO pode ser elevado no cliente (somente Admin SDK).
     match /users/{userId} {
       allow read: if request.auth != null && request.auth.uid == userId;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.uid == userId
+        && (!('platformRole' in request.resource.data)
+            || request.resource.data.platformRole == 'USER');
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.platformRole == resource.data.platformRole;
+      allow delete: if false;
     }
 
     // ---------- MEMBROS (tenant_users) ----------
@@ -33,6 +42,11 @@ service cloud.firestore {
     // ---------- CONVITES ----------
     // Somente Admin SDK (API de convite / aceite). Cliente não lê nem grava.
     match /invites/{token} {
+      allow read, write: if false;
+    }
+
+    // ---------- PLATAFORMA (bootstrap do PLATFORM_OWNER) ----------
+    match /platform/{docId} {
       allow read, write: if false;
     }
 
@@ -56,18 +70,6 @@ service cloud.firestore {
     // O site público consome dados sanitizados via API route (Admin SDK).
     // Escrita apenas por membros do tenant / papel de plataforma.
     match /tenants/{tenantId} {
-      allow read: if request.auth != null && (isTenantMember(tenantId) || isPlatformRole());
-      allow create: if request.auth != null
-        && request.resource.data.ownerUserId == request.auth.uid
-        && request.resource.data.slug is string
-        && request.resource.data.slug.size() >= 2;
-      allow update: if request.auth != null && isTenantMember(tenantId)
-        && request.resource.data.slug == resource.data.slug
-        && request.resource.data.ownerUserId == resource.data.ownerUserId;
-      allow delete: if request.auth != null && isPlatformRole();
-
-      // ----- Subcoleções do tenant -----
-      // Toda subcoleção herda a regra: apenas membros do tenant.
       function isMember() {
         return isTenantMember(tenantId);
       }
@@ -75,6 +77,19 @@ service cloud.firestore {
       function hasRole(roles) {
         return isMember() && getTenantRole(tenantId).role in roles;
       }
+
+      allow read: if request.auth != null && (isMember() || isPlatformRole());
+      allow create: if request.auth != null
+        && request.resource.data.ownerUserId == request.auth.uid
+        && request.resource.data.slug is string
+        && request.resource.data.slug.size() >= 2;
+      allow update: if request.auth != null
+        && hasRole(['TENANT_OWNER', 'TENANT_ADMIN'])
+        && request.resource.data.slug == resource.data.slug
+        && request.resource.data.ownerUserId == resource.data.ownerUserId
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.planId == resource.data.planId;
+      allow delete: if request.auth != null && isPlatformRole();
 
       match /categories/{docId} {
         allow read: if isMember();
@@ -188,8 +203,9 @@ service cloud.firestore {
     // FUNÇÕES AUXILIARES
     // ============================================================
     function isPlatformRole() {
-      return request.auth.uid in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.platformRoles
-        || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.platformRole in ['PLATFORM_OWNER', 'PLATFORM_ADMIN'];
+      return request.auth != null
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.platformRole in ['PLATFORM_OWNER', 'PLATFORM_ADMIN'];
     }
 
     function isTenantMember(tenantId) {
