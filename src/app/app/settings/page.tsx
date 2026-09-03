@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { getFirebaseFirestore } from "@/lib/firebase/client";
@@ -78,6 +78,61 @@ export default function SettingsPage() {
     state: activeTenant?.address?.state ?? "",
     zip: activeTenant?.address?.zip ?? "",
   });
+  const [agendaSettings, setAgendaSettings] = useState({
+    timezone: activeTenant?.settings?.timezone ?? "America/Sao_Paulo",
+    slotIntervalMinutes: String(activeTenant?.settings?.slotIntervalMinutes ?? 30),
+    bookingLeadTimeMinutes: String(activeTenant?.settings?.bookingLeadTimeMinutes ?? 60),
+    bookingCancelWindowMinutes: String(activeTenant?.settings?.bookingCancelWindowMinutes ?? 120),
+    confirmationRequired: activeTenant?.settings?.confirmationRequired ?? false,
+  });
+
+  useEffect(() => {
+    if (!activeTenant) return;
+    setLogoUrl(activeTenant.logoUrl ?? "");
+    setBannerUrl(activeTenant.branding.bannerUrl ?? "");
+    setPrimaryColor(activeTenant.branding.primaryColor ?? "#4f46e5");
+    setSecondaryColor(activeTenant.branding.secondaryColor ?? "#0f172a");
+    setFont(FONT_OPTIONS.find((f) => f.value === activeTenant.branding.font)?.id ?? "system-ui");
+    setTheme(activeTenant.branding.theme ?? "light");
+    setShowContact(activeTenant.branding.showContact ?? true);
+    setShowLocation(activeTenant.branding.showLocation ?? true);
+    setGallery(activeTenant.branding.galleryUrls ?? []);
+    setGalleryText((activeTenant.branding.galleryUrls ?? []).join("\n"));
+    setTestimonials(activeTenant.branding.testimonials ?? []);
+    setFaq(activeTenant.branding.faq ?? []);
+    setSocial(activeTenant.branding.socialLinks ?? {});
+    setSectionOrder(
+      activeTenant.branding.sectionOrder?.length
+        ? activeTenant.branding.sectionOrder
+        : ["services", "professionals", "schedule", "contact"]
+    );
+    setCompany({
+      name: activeTenant.name ?? "",
+      tradeName: activeTenant.tradeName ?? "",
+      cnpjCpf: activeTenant.cnpjCpf ?? "",
+      phone: activeTenant.phone ?? "",
+      whatsapp: activeTenant.whatsapp ?? "",
+      email: activeTenant.email ?? "",
+      instagram: activeTenant.instagram ?? "",
+      description: activeTenant.description ?? "",
+      street: activeTenant.address?.street ?? "",
+      number: activeTenant.address?.number ?? "",
+      complement: activeTenant.address?.complement ?? "",
+      neighborhood: activeTenant.address?.neighborhood ?? "",
+      city: activeTenant.address?.city ?? "",
+      state: activeTenant.address?.state ?? "",
+      zip: activeTenant.address?.zip ?? "",
+    });
+    setAgendaSettings({
+      timezone: activeTenant.settings?.timezone ?? "America/Sao_Paulo",
+      slotIntervalMinutes: String(activeTenant.settings?.slotIntervalMinutes ?? 30),
+      bookingLeadTimeMinutes: String(activeTenant.settings?.bookingLeadTimeMinutes ?? 60),
+      bookingCancelWindowMinutes: String(activeTenant.settings?.bookingCancelWindowMinutes ?? 120),
+      confirmationRequired: activeTenant.settings?.confirmationRequired ?? false,
+    });
+    // Hydrate once per tenant to avoid wiping in-progress edits from snapshots.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTenant?.id]);
 
   const tenantId = activeTenantId;
   const tenant = activeTenant;
@@ -142,6 +197,15 @@ export default function SettingsPage() {
         },
         logoUrl: logoUrl || null,
         bannerUrl: bannerUrl || null,
+        settings: {
+          timezone: agendaSettings.timezone || "America/Sao_Paulo",
+          currency: tenant.settings?.currency ?? "BRL",
+          slotIntervalMinutes: Math.max(5, Number(agendaSettings.slotIntervalMinutes) || 30),
+          bookingLeadTimeMinutes: Math.max(0, Number(agendaSettings.bookingLeadTimeMinutes) || 0),
+          bookingCancelWindowMinutes: Math.max(0, Number(agendaSettings.bookingCancelWindowMinutes) || 0),
+          confirmationRequired: agendaSettings.confirmationRequired,
+          allowOnlinePayments: tenant.settings?.allowOnlinePayments ?? false,
+        },
       };
       await updateDoc(doc(db, "tenants", tenantId), patch);
       setSaved(true);
@@ -603,6 +667,81 @@ export default function SettingsPage() {
           </div>
         </div>
         <p className="text-xs text-slate-500">Plano {tenant.planId} · assinatura {tenant.subscriptionStatus}.</p>
+      </div>
+
+      <div className="card space-y-4">
+        <div>
+          <h2 className="font-semibold text-slate-900">Agenda e agendamento</h2>
+          <p className="text-sm text-slate-500">Fuso, intervalo de horários e regras de antecedência.</p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="label">Fuso horário</label>
+            <select
+              className="input"
+              disabled={!canManage}
+              value={agendaSettings.timezone}
+              onChange={(e) => setAgendaSettings({ ...agendaSettings, timezone: e.target.value })}
+            >
+              <option value="America/Sao_Paulo">America/Sao_Paulo (Brasília)</option>
+              <option value="America/Manaus">America/Manaus</option>
+              <option value="America/Fortaleza">America/Fortaleza</option>
+              <option value="America/Recife">America/Recife</option>
+              <option value="America/Belem">America/Belem</option>
+              <option value="America/Cuiaba">America/Cuiaba</option>
+              <option value="America/Porto_Velho">America/Porto_Velho</option>
+              <option value="America/Rio_Branco">America/Rio_Branco</option>
+              <option value="America/Noronha">America/Noronha</option>
+            </select>
+          </div>
+          <div>
+            <label className="label">Intervalo dos horários (minutos)</label>
+            <select
+              className="input"
+              disabled={!canManage}
+              value={agendaSettings.slotIntervalMinutes}
+              onChange={(e) => setAgendaSettings({ ...agendaSettings, slotIntervalMinutes: e.target.value })}
+            >
+              <option value="15">15</option>
+              <option value="20">20</option>
+              <option value="30">30</option>
+              <option value="45">45</option>
+              <option value="60">60</option>
+            </select>
+          </div>
+          <div>
+            <label className="label">Antecedência mínima (minutos)</label>
+            <input
+              type="number"
+              min={0}
+              className="input"
+              disabled={!canManage}
+              value={agendaSettings.bookingLeadTimeMinutes}
+              onChange={(e) => setAgendaSettings({ ...agendaSettings, bookingLeadTimeMinutes: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="label">Janela para cancelar (minutos)</label>
+            <input
+              type="number"
+              min={0}
+              className="input"
+              disabled={!canManage}
+              value={agendaSettings.bookingCancelWindowMinutes}
+              onChange={(e) => setAgendaSettings({ ...agendaSettings, bookingCancelWindowMinutes: e.target.value })}
+            />
+          </div>
+        </div>
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-slate-300 text-brand-600"
+            disabled={!canManage}
+            checked={agendaSettings.confirmationRequired}
+            onChange={(e) => setAgendaSettings({ ...agendaSettings, confirmationRequired: e.target.checked })}
+          />
+          Exigir confirmação da empresa antes de confirmar o agendamento
+        </label>
       </div>
       </form>
       </>

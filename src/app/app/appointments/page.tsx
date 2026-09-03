@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTenant } from "@/lib/tenant/TenantContext";
+import { DEFAULT_TZ, instantFromWallClock, wallClockOf } from "@/lib/booking/timezone";
 import {
   createAppointment,
   listAppointments,
@@ -35,7 +36,8 @@ const STATUS_LABEL: Record<AppointmentStatus, string> = {
 };
 
 export default function AppointmentsPage() {
-  const { activeTenantId } = useTenant();
+  const { activeTenantId, activeTenant } = useTenant();
+  const tz = activeTenant?.settings?.timezone || DEFAULT_TZ;
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
@@ -104,7 +106,7 @@ export default function AppointmentsPage() {
     try {
       const service = services.find((s) => s.id === form.serviceId);
       if (!service) throw new Error("Selecione um serviço.");
-      const startAt = new Date(`${form.date}T${form.time}:00`);
+      const startAt = instantFromWallClock(form.date, form.time, tz);
       await createAppointment({
         tenantId: activeTenantId,
         professionalId: form.professionalId,
@@ -143,12 +145,13 @@ export default function AppointmentsPage() {
 
   function openReschedule(a: Appointment) {
     const start = toDateValue(a.startAt);
+    const wall = wallClockOf(start, tz);
     setRescheduleTarget(a);
     setRescheduleForm({
       professionalId: a.professionalId,
       serviceId: a.serviceId,
-      date: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`,
-      time: start.toTimeString().slice(0, 5),
+      date: wall.date,
+      time: wall.time,
     });
     setError("");
   }
@@ -167,7 +170,7 @@ export default function AppointmentsPage() {
     try {
       const service = services.find((s) => s.id === rescheduleForm.serviceId);
       if (!service) throw new Error("Selecione um serviço.");
-      const startAt = new Date(`${rescheduleForm.date}T${rescheduleForm.time}:00`);
+      const startAt = instantFromWallClock(rescheduleForm.date, rescheduleForm.time, tz);
       await rescheduleAppointment({
         tenantId: activeTenantId,
         appointmentId: rescheduleTarget.id,

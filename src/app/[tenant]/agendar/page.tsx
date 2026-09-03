@@ -5,7 +5,7 @@ import { publicThemeClasses } from "@/lib/branding/theme";
 import { formatBRL } from "@/lib/utils/format";
 import type { Professional, Service, Tenant } from "@/types";
 
-type Step = "service" | "professional" | "datetime" | "customer" | "done";
+type Step = "service" | "professional" | "datetime" | "customer" | "confirm" | "done";
 
 interface BookResponse {
   ok?: boolean;
@@ -178,6 +178,20 @@ export default function BookingPage({
     }
   }
 
+  async function handleCustomerSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    if (!form.name.trim()) {
+      setError("Informe o nome completo.");
+      return;
+    }
+    if (!form.phone.trim()) {
+      setError("Informe o WhatsApp.");
+      return;
+    }
+    setStep("confirm");
+  }
+
   async function handleConfirm(e: React.FormEvent) {
     e.preventDefault();
     if (!tenant || !service || !professional || !selectedTime) return;
@@ -256,8 +270,8 @@ export default function BookingPage({
       <main className="mx-auto max-w-3xl px-6 py-8">
         {step !== "done" && (
           <ol className="mb-6 flex gap-2 text-xs text-slate-500">
-            {["Serviço", "Profissional", "Data/Hora", "Dados"].map((label, i) => {
-              const order: Step[] = ["service", "professional", "datetime", "customer"];
+            {["Serviço", "Profissional", "Data/Hora", "Dados", "Confirmação"].map((label, i) => {
+              const order: Step[] = ["service", "professional", "datetime", "customer", "confirm"];
               const active = order.indexOf(step) === i;
               const done = order.indexOf(step) > i;
               return (
@@ -272,7 +286,7 @@ export default function BookingPage({
                     {i + 1}
                   </span>
                    <span className={active ? `font-semibold ${theme.heading}` : theme.muted}>{label}</span>
-                  {i < 3 && <span className="text-slate-300">-</span>}
+                  {i < 4 && <span className="text-slate-300">-</span>}
                 </li>
               );
             })}
@@ -418,7 +432,7 @@ export default function BookingPage({
         )}
 
         {step === "customer" && (
-          <form onSubmit={handleConfirm} className="space-y-4">
+          <form onSubmit={handleCustomerSubmit} className="space-y-4">
             <h1 className={`text-2xl font-bold ${theme.heading}`}>Seus dados</h1>
             <div className={`${theme.panel} text-sm ${theme.body}`}>
               {service?.name} com {professional?.name} em {dateLabel} às {selectedTime}
@@ -468,6 +482,70 @@ export default function BookingPage({
             </p>
             <div className="flex gap-3">
               <button type="button" className="btn-secondary" onClick={() => setStep("datetime")}>
+                Voltar
+              </button>
+              <button type="submit" className="btn-primary flex-1">
+                Revisar e continuar
+              </button>
+            </div>
+          </form>
+        )}
+
+        {step === "confirm" && (
+          <form onSubmit={handleConfirm} className="space-y-4">
+            <h1 className={`text-2xl font-bold ${theme.heading}`}>Confirme o agendamento</h1>
+            <div className={`${theme.panel} space-y-2 text-sm ${theme.body}`}>
+              <div className="flex justify-between gap-3">
+                <span className={theme.muted}>Serviço</span>
+                <span className="font-medium">{service?.name}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className={theme.muted}>Profissional</span>
+                <span className="font-medium">{professional?.name}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className={theme.muted}>Data</span>
+                <span className="font-medium">{dateLabel}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className={theme.muted}>Horário</span>
+                <span className="font-medium">{selectedTime}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className={theme.muted}>Duração</span>
+                <span className="font-medium">{service?.durationMinutes} min</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className={theme.muted}>Valor</span>
+                <span className="font-medium">{service ? formatBRL(service.price) : "-"}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className={theme.muted}>Cliente</span>
+                <span className="font-medium">{form.name}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className={theme.muted}>WhatsApp</span>
+                <span className="font-medium">{form.phone}</span>
+              </div>
+              {form.email && (
+                <div className="flex justify-between gap-3">
+                  <span className={theme.muted}>E-mail</span>
+                  <span className="font-medium">{form.email}</span>
+                </div>
+              )}
+              {form.coupon && (
+                <div className="flex justify-between gap-3">
+                  <span className={theme.muted}>Cupom</span>
+                  <span className="font-medium">{form.coupon}</span>
+                </div>
+              )}
+            </div>
+            <p className="rounded-lg bg-slate-50 p-2 text-xs text-slate-500">
+              O horário é validado novamente no servidor na confirmação. Se alguém reservar ao
+              mesmo tempo, o sistema recusa e você escolhe outro horário.
+            </p>
+            <div className="flex gap-3">
+              <button type="button" className="btn-secondary" onClick={() => setStep("customer")}>
                 Voltar
               </button>
               <button type="submit" className="btn-primary flex-1" disabled={creating}>

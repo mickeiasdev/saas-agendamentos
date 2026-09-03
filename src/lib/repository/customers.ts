@@ -2,6 +2,7 @@ import {
   addDoc,
   deleteDoc,
   doc,
+  getCountFromServer,
   getDoc,
   getDocs,
   limit,
@@ -62,6 +63,11 @@ export async function listCustomers(
 export async function getCustomer(tenantId: string, id: string): Promise<Customer | null> {
   const snap = await getDoc(doc(collectionFor(tenantId), id));
   return snap.exists() ? ({ id: snap.id, ...snap.data() } as Customer) : null;
+}
+
+export async function countCustomers(tenantId: string): Promise<number> {
+  const snap = await getCountFromServer(collectionFor(tenantId));
+  return snap.data().count;
 }
 
 export interface CreateCustomerInput {

@@ -6,7 +6,7 @@ import { useTenant } from "@/lib/tenant/TenantContext";
 import { listAppointments } from "@/lib/repository/appointments";
 import { listServices } from "@/lib/repository/services";
 import { listProfessionals } from "@/lib/repository/professionals";
-import { listCustomers } from "@/lib/repository/customers";
+import { countCustomers } from "@/lib/repository/customers";
 import { formatBRL, formatDateTime } from "@/lib/utils/format";
 import type { Appointment, Professional, Service } from "@/types";
 
@@ -38,15 +38,15 @@ export default function DashboardPage() {
       listAppointments(activeTenantId, { from: start, to: end }),
       listServices(activeTenantId),
       listProfessionals(activeTenantId),
-      listCustomers(activeTenantId, { pageSize: 500 }),
-    ]).then(([appointments, svcs, pros, customers]) => {
+      countCustomers(activeTenantId),
+    ]).then(([appointments, svcs, pros, customerCount]) => {
       setTodayAppointments(appointments);
       setServices(svcs);
       setProfessionals(pros);
       setStats({
         services: svcs.length,
         professionals: pros.length,
-        customers: customers.items.length,
+        customers: customerCount,
       });
     });
   }, [activeTenantId]);

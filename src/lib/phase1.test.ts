@@ -160,6 +160,23 @@ describe("Fase 1 — aceite (cadastro → empresa → CRUD → agendamento → c
     expect(cancelled.ok).toBe(true);
   });
 
+  it("confirmação da empresa deixa o agendamento pendente", async () => {
+    const db = new FakeFirestore();
+    seed(db, "t1", "tena");
+    const tenant = db.store.get("tenants/t1") as { settings: { confirmationRequired: boolean } };
+    tenant.settings.confirmationRequired = true;
+    const created = await createPublicAppointment(db as never, {
+      tenantSlug: "tena",
+      serviceId: "svc1",
+      professionalId: "pro1",
+      date: MONDAY,
+      time: "16:00",
+      customer,
+    });
+    const saved = db.store.get(`tenants/t1/appointments/${created.appointmentId}`) as { status: string };
+    expect(saved.status).toBe("pending");
+  });
+
   it("Tenant A tenta acessar Tenant B → NEGADO (membership + API)", async () => {
     const memberships: TenantUser[] = [
       { userId: "uA", tenantId: "tA", role: "TENANT_OWNER", status: "active", createdAt: new Date() },
