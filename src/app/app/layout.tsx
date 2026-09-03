@@ -33,6 +33,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/app/reviews", label: "Avaliações", permission: "review.manage" },
   { href: "/app/reports", label: "Relatórios", permission: "reports.view" },
   { href: "/app/notifications", label: "Notificações", permission: "notification.view" },
+  { href: "/app/team", label: "Equipe", permission: "team.manage" },
   { href: "/app/settings", label: "Configurações" },
   { href: "/app/master", label: "Painel Master", permission: "master.view" },
 ];

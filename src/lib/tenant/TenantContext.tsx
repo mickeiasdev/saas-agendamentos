@@ -13,7 +13,7 @@ import {
 import { getFirebaseFirestore } from "@/lib/firebase/client";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { getPlanLimits, PLAN_ID } from "@/lib/plans";
-import { allocateUniqueSlug, SLUG_TAKEN_MESSAGE } from "@/lib/tenant/uniqueSlug";
+import { claimExactSlug, SLUG_TAKEN_MESSAGE } from "@/lib/tenant/uniqueSlug";
 import type { Tenant, TenantUser } from "@/types";
 
 export interface TenantState {
@@ -69,7 +69,9 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     const db = getFirebaseFirestore();
     const q = query(collection(db, "tenant_users"), where("userId", "==", user.uid));
     const unsub = onSnapshot(q, async (snap) => {
-      const list = snap.docs.map((d) => d.data() as TenantUser);
+      const list = snap.docs
+        .map((d) => d.data() as TenantUser)
+        .filter((m) => m.status === "active");
       setMemberships(list);
       const saved = profile?.activeTenantId;
       setActiveTenantId((current) => {
@@ -123,9 +125,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       const tenantRef = doc(collection(db, "tenants"));
       const tenantId = tenantRef.id;
       const now = serverTimestamp();
-      const taken = new Set<string>();
-      const slug = await allocateUniqueSlug(input.slug || input.name, async (candidate) => {
-        if (taken.has(candidate)) return true;
+      const slug = await claimExactSlug(input.slug || input.name, async (candidate) => {
         const snap = await getDoc(doc(db, "slugs", candidate));
         return snap.exists();
       });
@@ -190,43 +190,21 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         role: "TENANT_OWNER",
         status: "active",
         displayName: user.displayName ?? user.email ?? "",
+        email: user.email ?? "",
         createdAt: now as never,
       };
 
-      let lastError: Error | null = null;
-      for (let round = 0; round < 5; round += 1) {
-        const currentSlug =
-          round === 0
-            ? slug
-            : await allocateUniqueSlug(input.slug || input.name, async (candidate) => {
-                if (taken.has(candidate)) return true;
-                const snap = await getDoc(doc(db, "slugs", candidate));
-                return snap.exists();
-              });
-        tenant.slug = currentSlug;
-        try {
-          await runTransaction(db, async (tx) => {
-            const slugRef = doc(db, "slugs", currentSlug);
-            const locked = await tx.get(slugRef);
-            if (locked.exists()) throw new Error(SLUG_TAKEN_MESSAGE);
-            tx.set(tenantRef, tenant);
-            tx.set(slugRef, { tenantId, createdAt: now });
-            tx.set(doc(db, "tenant_users", `${user.uid}_${tenantId}`), member);
-            tx.set(doc(db, "users", user.uid), { activeTenantId: tenantId }, { merge: true });
-          });
-          setActiveTenantId(tenantId);
-          return tenantId;
-        } catch (err) {
-          lastError = err as Error;
-          const message = lastError.message ?? "";
-          if (message.includes("already exists") || message === SLUG_TAKEN_MESSAGE) {
-            taken.add(currentSlug);
-            continue;
-          }
-          throw err;
-        }
-      }
-      throw lastError ?? new Error(SLUG_TAKEN_MESSAGE);
+      await runTransaction(db, async (tx) => {
+        const slugRef = doc(db, "slugs", slug);
+        const locked = await tx.get(slugRef);
+        if (locked.exists()) throw new Error(SLUG_TAKEN_MESSAGE);
+        tx.set(tenantRef, tenant);
+        tx.set(slugRef, { tenantId, createdAt: now });
+        tx.set(doc(db, "tenant_users", `${user.uid}_${tenantId}`), member);
+        tx.set(doc(db, "users", user.uid), { activeTenantId: tenantId }, { merge: true });
+      });
+      setActiveTenantId(tenantId);
+      return tenantId;
     },
     [user]
   );

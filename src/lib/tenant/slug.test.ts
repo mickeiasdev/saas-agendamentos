@@ -47,6 +47,7 @@ describe("rewritePathForTenantSlug", () => {
     expect(rewritePathForTenantSlug("/api/public/cancel", "barbearia")).toBeNull();
     expect(rewritePathForTenantSlug("/app/agenda", "barbearia")).toBeNull();
     expect(rewritePathForTenantSlug("/login", "barbearia")).toBeNull();
+    expect(rewritePathForTenantSlug("/invite/abc", "barbearia")).toBeNull();
   });
 
   it("não duplica o slug quando o caminho já é /{slug}", () => {

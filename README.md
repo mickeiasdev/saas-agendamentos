@@ -74,7 +74,8 @@ Ao acessar a aplicação sem Firebase configurado, uma tela orienta a configura�
 ## Funcionalidades (Fase 1 — MVP)
 
 - Autenticação: cadastro, login, logout, recuperação e alteração de senha
-- Multi-tenancy: criação de empresa (tenant), vínculo de usuário como TENANT_OWNER
+- Multi-tenancy: criação de empresa (tenant) com slug único; vínculo inicial como TENANT_OWNER
+- Equipe: convite de papéis (`TENANT_ADMIN`, `MANAGER`, `PROFESSIONAL`, `CUSTOMER`)
 - Painel Master (PLATFORM_ADMIN/OWNER): visão geral de empresas e usuários
 - CRUDs: categorias, serviços, profissionais, clientes
 - Disponibilidade: expediente semanal, intervalos, folgas, bloqueios, férias
@@ -116,6 +117,7 @@ npm run build        # build de produção
 npm run lint         # lint (ESLint)
 npm run typecheck    # checagem de tipos (tsc)
 npm test             # testes unitários (Vitest)
+npm run test:rules   # rules reais no emulador Firestore (Tenant A ↛ Tenant B)
 ```
 
 ## Licença

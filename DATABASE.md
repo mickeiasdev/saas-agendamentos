@@ -24,6 +24,7 @@ tenants/{tenantId}                         # dados públicos + branding + plano
 users/{uid}                               # perfis + papel na plataforma
 tenant_users/{userId_tenantId}            # vínculo usuário ↔ tenant + role
 slugs/{slug}                              # trava de unicidade do endereço público
+invites/{token}                           # convite de papéis (Admin SDK)
 plans/{planId}                            # catálogo de planos
 ```
 
@@ -61,7 +62,8 @@ plans/{planId}                            # catálogo de planos
 
 - **Timestamps**: campos `createdAt`/`updatedAt` usam `serverTimestamp()`.
 - **IDs**: gerados pelo Firestore (`addDoc` / `doc().id`).
-- **Slug único**: na criação da empresa, `slugs/{slug}` é gravado na mesma transação do tenant. Se o endereço já existir, o sistema tenta `nome-2`, `nome-3`, etc. O documento de slug é create-only (não pode ser alterado nem apagado pelo cliente).
+- **Slug único**: na criação da empresa, `slugs/{slug}` é gravado na mesma transação do tenant. Se o endereço já existir, a criação é recusada — duas empresas não podem ter o mesmo endereço. O documento de slug é create-only (não pode ser alterado nem apagado pelo cliente).
+- **Convites**: `invites/{token}` (Admin SDK). O cadastro da empresa cria só `TENANT_OWNER`; demais papéis entram por convite.
 - **Slots**: representados por `startAt`/`endAt` no documento do agendamento
   (não existem documentos de "slot" — o horário livre é derivado do expediente
   menos os agendamentos, o que evita corrida e documentos desnecessários).

@@ -48,6 +48,12 @@ describe("can", () => {
   it("TENANT_OWNER acessa tudo do tenant", () => {
     expect(can("TENANT_OWNER", "settings.manage")).toBe(true);
     expect(can("TENANT_OWNER", "availability.manage")).toBe(true);
+    expect(can("TENANT_OWNER", "team.manage")).toBe(true);
+  });
+
+  it("TENANT_ADMIN convida equipe; MANAGER não", () => {
+    expect(can("TENANT_ADMIN", "team.manage")).toBe(true);
+    expect(can("MANAGER", "team.manage")).toBe(false);
   });
 
   it("TENANT_ADMIN gerencia cupons, promoções, fidelidade e financeiro", () => {

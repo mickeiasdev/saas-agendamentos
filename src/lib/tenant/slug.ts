@@ -54,7 +54,8 @@ export function rewritePathForTenantSlug(pathname: string, slug: string): string
     pathname.startsWith("/app") ||
     pathname.startsWith("/login") ||
     pathname.startsWith("/signup") ||
-    pathname.startsWith("/recover")
+    pathname.startsWith("/recover") ||
+    pathname.startsWith("/invite")
   ) {
     return null;
   }

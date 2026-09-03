@@ -13,8 +13,8 @@ npm run test:watch # modo watch
   expediente, intervalos, folgas, férias, bloqueios, feriados.
 - **Agendamento** (`src/lib/booking/server.ts`, `src/lib/repository/overlap.ts`):
   double booking, overlap na transação, cancelamento, remarcação.
-- **RBAC e isolamento** (`src/lib/rbac/*`, `src/lib/firestore.rules.test.ts`):
-  Tenant A tenta acessar Tenant B → NEGADO.
+- **RBAC e isolamento** (`src/lib/rbac/*`, `src/lib/firestore.rules.test.ts`, `src/lib/firestore.rules.emulator.test.ts`):
+  Tenant A tenta acessar Tenant B → NEGADO (texto das rules + emulador Firestore).
 - **Site público** (`src/lib/branding/theme.ts`, `src/lib/tenant/slug.ts`):
   tema light/dark e equivalente de `tenant.minhaplataforma.com`.
 - **Cancel sem Admin SDK** (`src/lib/server/firebaseAdmin.test.ts`):
@@ -39,8 +39,8 @@ npx firebase emulators:start
 ```
 Tenant A → tenta acessar dados do Tenant B → NEGADO
 ```
-Verificar em: Firestore Rules (`src/lib/firestore.rules.test.ts`), API pública
-(`src/lib/booking/server.test.ts`), membership (`src/lib/rbac/membership.test.ts`).
+Verificar em: Firestore Rules no emulador (`src/lib/firestore.rules.emulator.test.ts`),
+API pública (`src/lib/booking/server.test.ts`), membership (`src/lib/rbac/membership.test.ts`).
 
 ### E2E (Fase 3)
 Cadastro → empresa → serviço → profissional → horário → site → cliente →
@@ -48,7 +48,10 @@ agendamento → pagamento → notificação → atendimento → avaliação.
 
 ## Rodando com o emulador (Firestore)
 
-1. `npx firebase init emulators`
-2. `npx firebase emulators:start`
-3. Configure `NEXT_PUBLIC_FIREBASE_*` apontando para `localhost:8080` e o
-   Firestore em modo emulador (`firebase emulators:exec "npm test"`).
+```bash
+# Rules reais: Tenant A não lê Tenant B, slug único, convite não nasce no cliente
+npm run test:rules
+```
+
+Requer Java (JRE) e o emulador Firestore. Sem o emulador, `npm test` segue
+passando (a suíte do emulador é ignorada automaticamente).

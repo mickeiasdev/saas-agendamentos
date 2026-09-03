@@ -18,12 +18,22 @@ service cloud.firestore {
 
     // ---------- MEMBROS (tenant_users) ----------
     // Leitura permitida para o próprio usuário (para listar seus tenants).
+    // Create no cliente: somente o dono, no onboarding (TENANT_OWNER).
+    // Convites de outros papéis passam pela API (Admin SDK).
     match /tenant_users/{id} {
       allow read: if request.auth != null && request.auth.uid == resource.data.userId;
       allow create: if request.auth != null
         && request.auth.uid == request.resource.data.userId
-        && request.resource.data.role in ['TENANT_OWNER'];
+        && request.resource.data.role in ['TENANT_OWNER']
+        && request.resource.data.status == 'active'
+        && id == request.auth.uid + '_' + request.resource.data.tenantId;
       allow update, delete: if false;
+    }
+
+    // ---------- CONVITES ----------
+    // Somente Admin SDK (API de convite / aceite). Cliente não lê nem grava.
+    match /invites/{token} {
+      allow read, write: if false;
     }
 
     // ---------- SLUGS (endereço público único) ----------
@@ -48,14 +58,22 @@ service cloud.firestore {
     match /tenants/{tenantId} {
       allow read: if request.auth != null && (isTenantMember(tenantId) || isPlatformRole());
       allow create: if request.auth != null
-        && request.resource.data.ownerUserId == request.auth.uid;
-      allow update: if request.auth != null && isTenantMember(tenantId);
+        && request.resource.data.ownerUserId == request.auth.uid
+        && request.resource.data.slug is string
+        && request.resource.data.slug.size() >= 2;
+      allow update: if request.auth != null && isTenantMember(tenantId)
+        && request.resource.data.slug == resource.data.slug
+        && request.resource.data.ownerUserId == resource.data.ownerUserId;
       allow delete: if request.auth != null && isPlatformRole();
 
       // ----- Subcoleções do tenant -----
       // Toda subcoleção herda a regra: apenas membros do tenant.
       function isMember() {
         return isTenantMember(tenantId);
+      }
+
+      function hasRole(roles) {
+        return isMember() && getTenantRole(tenantId).role in roles;
       }
 
       match /categories/{docId} {
@@ -175,17 +193,12 @@ service cloud.firestore {
     }
 
     function isTenantMember(tenantId) {
-      let role = getTenantRole(tenantId);
-      return role != null && role.status == 'active';
+      return exists(/databases/$(database)/documents/tenant_users/$(request.auth.uid + '_' + tenantId))
+        && getTenantRole(tenantId).status == 'active';
     }
 
-    function getTenantRole(tenantId) {
-      let doc = get(/databases/$(database)/documents/tenant_users/$(request.auth.uid + '_' + tenantId)).data;
-      return doc;
-    }
-
-    function hasRole(roles) {
-      return getTenantRole(tenantId).role in roles;
+    function getTenantRole(tid) {
+      return get(/databases/$(database)/documents/tenant_users/$(request.auth.uid + '_' + tid)).data;
     }
   }
 }

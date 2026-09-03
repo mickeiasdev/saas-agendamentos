@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import FirebaseSetupGuide from "@/components/FirebaseSetupGuide";
 
-export default function SignupPage() {
+function SignupForm() {
   const { register, configured } = useAuth();
   const router = useRouter();
+  const search = useSearchParams();
+  const rawNext = search.get("next") ?? "";
+  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/app?verify=1";
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -32,7 +35,7 @@ export default function SignupPage() {
     setLoading(true);
     try {
       await register(email, password, name);
-      router.push("/app?verify=1");
+      router.push(next.startsWith("/") ? next : "/app?verify=1");
     } catch (err) {
       setError((err as Error).message ?? "Erro ao criar conta.");
     } finally {
@@ -71,11 +74,19 @@ export default function SignupPage() {
         </form>
         <div className="mt-4 text-center text-sm">
           Já tem conta?{" "}
-          <Link href="/login" className="text-brand-600 hover:underline">
+          <Link href={next.startsWith("/invite/") ? `/login?next=${encodeURIComponent(next)}` : "/login"} className="text-brand-600 hover:underline">
             Entrar
           </Link>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-slate-500">Carregando...</div>}>
+      <SignupForm />
+    </Suspense>
   );
 }

@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import FirebaseSetupGuide from "@/components/FirebaseSetupGuide";
 
-export default function LoginPage() {
+function LoginForm() {
   const { login, configured } = useAuth();
   const router = useRouter();
+  const search = useSearchParams();
+  const rawNext = search.get("next") ?? "";
+  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/app";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -22,7 +25,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      router.push("/app");
+      router.push(next.startsWith("/") ? next : "/app");
     } catch (err) {
       setError((err as Error).message ?? "Erro ao entrar.");
     } finally {
@@ -69,11 +72,19 @@ export default function LoginPage() {
           <Link href="/recover" className="text-brand-600 hover:underline">
             Esqueci minha senha
           </Link>
-          <Link href="/signup" className="text-brand-600 hover:underline">
+          <Link href={next !== "/app" ? `/signup?next=${encodeURIComponent(next)}` : "/signup"} className="text-brand-600 hover:underline">
             Criar conta
           </Link>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-slate-500">Carregando...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }

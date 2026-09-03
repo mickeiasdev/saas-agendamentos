@@ -33,5 +33,14 @@ jobs:
       - name: Tests
         run: npm test
 
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Firestore rules (emulator)
+        run: npm run test:rules
+
       - name: Build
         run: npm run build

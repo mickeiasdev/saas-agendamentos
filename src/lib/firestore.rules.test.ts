@@ -19,7 +19,13 @@ describe("Firestore Rules — isolamento Tenant A -> Tenant B", () => {
 
   it("associa o papel via tenant_users/{uid_tenantId} (A não acessa B)", () => {
     expect(rules).toContain("request.auth.uid + '_' + tenantId");
-    expect(rules).toMatch(/role.status == 'active'/);
+    expect(rules).toMatch(/getTenantRole\(tenantId\)\.status == 'active'/);
+  });
+
+  it("só o TENANT_OWNER nasce no cliente; convites ficam no Admin SDK", () => {
+    expect(rules).toContain("request.resource.data.role in ['TENANT_OWNER']");
+    expect(rules).toContain("match /invites/{token}");
+    expect(rules).toMatch(/match \/invites\/\{token\}[\s\S]*allow read, write: if false/);
   });
 
   it("trava slugs/{slug} como create-only (endereço público único)", () => {

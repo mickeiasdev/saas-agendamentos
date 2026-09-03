@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   allocateUniqueSlug,
+  assertSlugClaimable,
+  claimExactSlug,
   firstSlugAttempt,
+  SLUG_TAKEN_MESSAGE,
   slugCandidate,
   validateTenantSlug,
 } from "./uniqueSlug";
@@ -42,5 +45,20 @@ describe("allocateUniqueSlug", () => {
   it("pula slugs reservados (app, login, www)", async () => {
     expect(firstSlugAttempt("app")).toBe(2);
     await expect(allocateUniqueSlug("app", async () => false)).resolves.toBe("app-2");
+  });
+});
+
+describe("claimExactSlug — duas empresas não podem ter o mesmo endereço", () => {
+  it("aceita o slug livre", async () => {
+    await expect(claimExactSlug("Barbearia Central", async () => false)).resolves.toBe("barbearia-central");
+  });
+
+  it("rejeita quando o slug já existe (sem gerar sufixo)", async () => {
+    await expect(claimExactSlug("Barbearia Central", async () => true)).rejects.toThrow(SLUG_TAKEN_MESSAGE);
+  });
+
+  it("rejeita slugs reservados em vez de sufixar", () => {
+    expect(() => assertSlugClaimable("app")).toThrow(/reservado/);
+    expect(() => assertSlugClaimable("login")).toThrow(/reservado/);
   });
 });

@@ -6,6 +6,8 @@ import {
   reschedulePublicAppointment,
 } from "@/lib/booking/server";
 import { slugify } from "@/lib/tenant/slug";
+import { claimExactSlug, SLUG_TAKEN_MESSAGE } from "@/lib/tenant/uniqueSlug";
+import { canInviteRole } from "@/lib/invites";
 import { findBlockingOverlaps } from "@/lib/repository/overlap";
 import { publicThemeClasses } from "@/lib/branding/theme";
 import { validateSlotAvailability } from "@/lib/booking/timezone";
@@ -80,6 +82,18 @@ describe("Fase 1 — aceite (cadastro → empresa → CRUD → agendamento → c
     const tenant = db.store.get("tenants/t1") as { description: string; branding: { theme: string } };
     expect(tenant.description).toBe("Cortes e barba no centro.");
     expect(publicThemeClasses(tenant.branding.theme as "dark").dark).toBe(true);
+  });
+
+  it("duas empresas não podem ter o mesmo endereço público", async () => {
+    const taken = new Set(["barbearia-central"]);
+    await expect(claimExactSlug("Barbearia Central", async (s) => taken.has(s))).rejects.toThrow(SLUG_TAKEN_MESSAGE);
+    await expect(claimExactSlug("Outra Barbearia", async (s) => taken.has(s))).resolves.toBe("outra-barbearia");
+  });
+
+  it("cadastro da empresa nasce TENANT_OWNER; demais papéis entram por convite", () => {
+    expect(canInviteRole("TENANT_OWNER", "TENANT_ADMIN")).toBe(true);
+    expect(canInviteRole("TENANT_OWNER", "MANAGER")).toBe(true);
+    expect(canInviteRole("TENANT_OWNER", "TENANT_OWNER")).toBe(false);
   });
 
   it("categoria, serviço, profissional, horário e cliente ficam isolados por tenant", () => {

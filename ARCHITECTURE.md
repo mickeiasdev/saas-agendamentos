@@ -56,7 +56,8 @@ Usuário → Login/Cadastro → Firebase Auth → usuário autenticado
 ### Criação de empresa (tenant)
 ```
 Usuário → Onboarding → cria tenant (TENANT_OWNER)
-        → writeBatch: tenants/{id} + tenant_users/{uid_id} + users/{uid}.activeTenantId
+        → transação: tenants/{id} + slugs/{slug} + tenant_users/{uid_id}
+        → convite de papéis: Equipe → invites/{token} → aceite em /invite/{token}
 ```
 
 ### Agendamento (site público)

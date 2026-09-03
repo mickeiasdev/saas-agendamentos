@@ -23,6 +23,23 @@ export function firstSlugAttempt(base: string): number {
   return isReservedSlug(base) ? 2 : 1;
 }
 
+export function assertSlugClaimable(raw: string): string {
+  const slug = validateTenantSlug(raw);
+  if (isReservedSlug(slug)) {
+    throw new Error("Este endereço é reservado pela plataforma. Escolha outro.");
+  }
+  return slug;
+}
+
+export async function claimExactSlug(
+  raw: string,
+  isTaken: (slug: string) => Promise<boolean>
+): Promise<string> {
+  const slug = assertSlugClaimable(raw);
+  if (await isTaken(slug)) throw new Error(SLUG_TAKEN_MESSAGE);
+  return slug;
+}
+
 export async function allocateUniqueSlug(
   raw: string,
   isTaken: (slug: string) => Promise<boolean>,

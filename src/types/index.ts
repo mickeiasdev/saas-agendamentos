@@ -137,8 +137,27 @@ export interface TenantUser {
   role: Role;
   status: "active" | "invited" | "disabled";
   displayName?: string;
+  email?: string;
   photoUrl?: string;
+  invitedBy?: string;
   createdAt: TimestampLike;
+}
+
+export type TenantInviteStatus = "pending" | "accepted" | "revoked" | "expired";
+
+export interface TenantInvite {
+  id: string;
+  tenantId: string;
+  tenantName: string;
+  email: string;
+  role: Role;
+  token: string;
+  status: TenantInviteStatus;
+  invitedBy: string;
+  createdAt: TimestampLike;
+  expiresAt: TimestampLike;
+  acceptedAt?: TimestampLike;
+  acceptedBy?: string;
 }
 
 export interface UserProfile {

@@ -36,9 +36,17 @@ export function isAtLeast(role: Role, minimum: Role): boolean {
   return roleLevel(role) >= roleLevel(minimum);
 }
 
+export const TENANT_INVITE_ROLES = ["TENANT_ADMIN", "MANAGER", "PROFESSIONAL", "CUSTOMER"] as const;
+export type TenantInviteRole = (typeof TENANT_INVITE_ROLES)[number];
+
+export function isTenantInviteRole(role: string): role is TenantInviteRole {
+  return (TENANT_INVITE_ROLES as readonly string[]).includes(role);
+}
+
 export type Permission =
   | "tenant.manage"
   | "tenant.view"
+  | "team.manage"
   | "service.manage"
   | "category.manage"
   | "professional.manage"
@@ -60,7 +68,8 @@ export type Permission =
 
 const MIN_ROLE: Record<Permission, Role> = {
   "tenant.manage": "TENANT_OWNER",
-  "tenant.view": "TENANT_OWNER",
+  "tenant.view": "PROFESSIONAL",
+  "team.manage": "TENANT_ADMIN",
   "service.manage": "TENANT_OWNER",
   "category.manage": "TENANT_OWNER",
   "professional.manage": "TENANT_OWNER",

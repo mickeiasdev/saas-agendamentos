@@ -8,7 +8,8 @@ membro ativo (`tenant_users/{uid_tenantId}`).
 
 - Membros ativos leem/gerenciam as subcoleções do seu tenant.
 - O dono do tenant (TENANT_OWNER) tem privilégios administrativos.
-- Nenhum usuário de Tenant A consegue ler documentos de Tenant B.
+- Convites de papéis (`TENANT_ADMIN`, `MANAGER`, `PROFESSIONAL`, `CUSTOMER`) passam pela API (Admin SDK); o cliente só cria `TENANT_OWNER` no onboarding.
+- Nenhum usuário de Tenant A consegue ler documentos de Tenant B (coberto por `npm run test:rules`).
 - O site público **não** lê o Firestore no cliente: consome a API
   `/api/public/site/[slug]` (Admin SDK) com projeção sanitizada.
 

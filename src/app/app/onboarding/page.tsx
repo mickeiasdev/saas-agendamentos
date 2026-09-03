@@ -6,6 +6,7 @@ import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { getFirebaseFirestore } from "@/lib/firebase/client";
 import { useTenant } from "@/lib/tenant/TenantContext";
 import { uploadTenantImage } from "@/lib/storage/upload";
+import { slugify } from "@/lib/tenant/slug";
 
 const SEGMENTS = [
   { id: "barber", label: "Barbearia" },
@@ -26,6 +27,8 @@ export default function OnboardingPage() {
   const { createTenant } = useTenant();
   const router = useRouter();
   const [name, setName] = useState("");
+  const [slug, setSlug] = useState("");
+  const [slugTouched, setSlugTouched] = useState(false);
   const [tradeName, setTradeName] = useState("");
   const [cnpjCpf, setCnpjCpf] = useState("");
   const [phone, setPhone] = useState("");
@@ -45,6 +48,8 @@ export default function OnboardingPage() {
   const [logoPreview, setLogoPreview] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const platformDomain = process.env.NEXT_PUBLIC_PLATFORM_DOMAIN ?? "minhaplataforma.com";
+  const previewSlug = slugTouched ? slugify(slug) : slugify(name);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -70,7 +75,7 @@ export default function OnboardingPage() {
           zip: zip || undefined,
         },
         segmentId,
-        slug: name,
+        slug: slugTouched ? slug : name,
       });
       if (logoFile) {
         const logoUrl = await uploadTenantImage(tenantId, "logo", logoFile);
@@ -99,7 +104,16 @@ export default function OnboardingPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="label" htmlFor="name">Nome da empresa *</label>
-            <input id="name" required className="input" value={name} onChange={(e) => setName(e.target.value)} />
+            <input
+              id="name"
+              required
+              className="input"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (!slugTouched) setSlug(slugify(e.target.value));
+              }}
+            />
           </div>
           <div>
             <label className="label" htmlFor="tradeName">Nome fantasia</label>
@@ -133,6 +147,24 @@ export default function OnboardingPage() {
               ))}
             </select>
           </div>
+        </div>
+        <div>
+          <label className="label" htmlFor="slug">Endereço público *</label>
+          <input
+            id="slug"
+            required
+            className="input"
+            value={slugTouched ? slug : previewSlug}
+            onChange={(e) => {
+              setSlugTouched(true);
+              setSlug(e.target.value);
+            }}
+            placeholder="minha-empresa"
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            Seu site fica em <code className="rounded bg-slate-100 px-1">{previewSlug || "sua-empresa"}.{platformDomain}</code>.
+            Duas empresas não podem ter o mesmo endereço.
+          </p>
         </div>
         <div>
           <label className="label" htmlFor="instagram">Instagram</label>
